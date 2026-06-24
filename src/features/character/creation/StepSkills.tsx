@@ -29,7 +29,7 @@ export function StepSkills({ data, patch }: StepSkillsProps) {
   // Fetch background skills once the background is selected
   useEffect(() => {
     if (!data.backgroundRef) return;
-    fetch('/data/backgrounds.json')
+    fetch(`${import.meta.env.BASE_URL}data/backgrounds.json`)
       .then(r => r.json())
       .then((json: BgJson) => {
         const bg = json.background.find(

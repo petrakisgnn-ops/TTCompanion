@@ -26,7 +26,7 @@ export function StepBackground({ data, patch }: StepBackgroundProps) {
   const [query, setQuery] = useState('');
 
   useEffect(() => {
-    fetch('/data/backgrounds.json')
+    fetch(`${import.meta.env.BASE_URL}data/backgrounds.json`)
       .then(r => r.json())
       .then((json: { background: BgEntry[] }) => {
         const sorted = [...json.background].sort((a, b) => {

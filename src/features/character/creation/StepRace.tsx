@@ -18,7 +18,7 @@ export function StepRace({ data, patch }: StepRaceProps) {
   const [query, setQuery] = useState('');
 
   useEffect(() => {
-    fetch('/data/races.json')
+    fetch(`${import.meta.env.BASE_URL}data/races.json`)
       .then(r => r.json())
       .then((json: { race: RaceEntry[] }) => {
         // PHB/SRD first, then alphabetical

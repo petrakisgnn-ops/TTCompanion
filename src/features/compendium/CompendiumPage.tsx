@@ -26,10 +26,10 @@ export function CompendiumPage() {
       db.spells.count(),
       db.monsters.count(),
       db.items.count(),
-      countJson('/data/races.json', 'race'),
-      countJson('/data/backgrounds.json', 'background'),
-      countJson('/data/feats.json', 'feat'),
-      countJson('/data/conditionsdiseases.json', 'condition', 'disease', 'status'),
+      countJson(`${import.meta.env.BASE_URL}data/races.json`, 'race'),
+      countJson(`${import.meta.env.BASE_URL}data/backgrounds.json`, 'background'),
+      countJson(`${import.meta.env.BASE_URL}data/feats.json`, 'feat'),
+      countJson(`${import.meta.env.BASE_URL}data/conditionsdiseases.json`, 'condition', 'disease', 'status'),
       // classes: count the class files we know about
       Promise.resolve(13),
     ]).then(([spells, monsters, items, races, backgrounds, feats, conditions, classes]) => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { ReferenceListPage, type RefEntry } from './ReferenceListPage';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { matchesEdition } from '../../domain/rules/edition';
@@ -11,7 +11,7 @@ export function RacesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/data/races.json')
+    fetch(`${import.meta.env.BASE_URL}data/races.json`)
       .then(r => r.json())
       .then((data: { race: Record<string, unknown>[] }) => {
         const entries: RefEntry[] = data.race.map(r => {

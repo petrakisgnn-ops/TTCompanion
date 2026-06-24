@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { ReferenceListPage, type RefEntry } from './ReferenceListPage';
 
 export function ConditionsPage() {
@@ -6,7 +6,7 @@ export function ConditionsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/data/conditionsdiseases.json')
+    fetch(`${import.meta.env.BASE_URL}data/conditionsdiseases.json`)
       .then(r => r.json())
       .then((data: { condition?: Record<string, unknown>[]; disease?: Record<string, unknown>[]; status?: Record<string, unknown>[] }) => {
         const map = (arr: Record<string, unknown>[] = [], kind: string): RefEntry[] =>

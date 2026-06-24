@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { ReferenceListPage, type RefEntry } from './ReferenceListPage';
 import { useSettingsStore } from '../../stores/settingsStore';
 import type { Entry } from '../../domain/reference/types';
@@ -32,7 +32,7 @@ export function ClassesPage() {
   useEffect(() => {
     Promise.all(
       CLASS_FILES.map(name =>
-        fetch(`/data/class/class-${name}.json`)
+        fetch(`${import.meta.env.BASE_URL}data/class/class-${name}.json`)
           .then(r => r.json() as Promise<ClassData>)
           .catch(() => null),
       ),

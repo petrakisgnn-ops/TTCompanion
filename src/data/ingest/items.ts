@@ -1,4 +1,4 @@
-import { db } from '../db';
+﻿import { db } from '../db';
 import { refKey } from '../../domain/reference/types';
 import type { Item } from '../../domain/reference/types';
 
@@ -8,8 +8,8 @@ export async function ingestItems(
   onProgress(0, 2);
 
   const [itemsRes, baseRes] = await Promise.all([
-    fetch('/data/items.json'),
-    fetch('/data/items-base.json'),
+    fetch(`${import.meta.env.BASE_URL}data/items.json`),
+    fetch(`${import.meta.env.BASE_URL}data/items-base.json`),
   ]);
 
   const [itemsData, baseData]: [

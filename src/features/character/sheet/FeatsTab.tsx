@@ -39,7 +39,7 @@ export function FeatsTab({ character }: FeatsTabProps) {
 
   // Fetch feats.json once
   useEffect(() => {
-    fetch('/data/feats.json')
+    fetch(`${import.meta.env.BASE_URL}data/feats.json`)
       .then(r => r.json())
       .then((json: { feat: FeatEntry[] }) => setAllFeats(json.feat));
   }, []);

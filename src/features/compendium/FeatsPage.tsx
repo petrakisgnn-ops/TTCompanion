@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { ReferenceListPage, type RefEntry } from './ReferenceListPage';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { matchesEdition } from '../../domain/rules/edition';
@@ -33,7 +33,7 @@ export function FeatsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/data/feats.json')
+    fetch(`${import.meta.env.BASE_URL}data/feats.json`)
       .then(r => r.json())
       .then((data: { feat: Record<string, unknown>[] }) => {
         const entries: RefEntry[] = data.feat.map(f => {
