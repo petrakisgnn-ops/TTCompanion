@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "PowerShell($nodePath = Get-Command node -ErrorAction SilentlyContinue; if \\($nodePath\\) { $nodePath.Source } else { \"node not found\" })",
+      "PowerShell(Get-ChildItem \"C:\\\\Program Files\\\\nodejs\" -ErrorAction SilentlyContinue; Get-ChildItem \"C:\\\\Program Files \\(x86\\)\\\\nodejs\" -ErrorAction SilentlyContinue; Get-ChildItem \"$env:APPDATA\\\\npm\" -ErrorAction SilentlyContinue | Select-Object -First 5; Get-ChildItem \"$env:LOCALAPPDATA\\\\Programs\\\\node\" -ErrorAction SilentlyContinue)",
+      "PowerShell(winget --version 2>&1)",
+      "PowerShell(winget install OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements 2>&1)",
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;$env:PATH\"; Set-Location \"c:\\\\Users\\\\Giannis\\\\Documents\\\\_Web\\\\DnDCompanion\"; node --version; npm --version)",
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;$env:PATH\"; Set-Location \"c:\\\\Users\\\\Giannis\\\\Documents\\\\_Web\\\\DnDCompanion\"; npm create vite@latest . -- --template react-ts 2>&1)",
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;$env:PATH\"; Set-Location \"c:\\\\Users\\\\Giannis\\\\Documents\\\\_Web\\\\DnDCompanion\"; npm install --save-dev vite @vitejs/plugin-react typescript @types/react @types/react-dom vite-plugin-pwa eslint @eslint/js typescript-eslint eslint-plugin-react-hooks globals vitest @vitest/ui jsdom @testing-library/react @testing-library/jest-dom 2>&1)",
+      "Bash(node -e ' *)",
+      "Bash(npm install *)",
+      "Bash(ls \"/c/Program Files/nodejs/\")",
+      "Read(//c/Program Files/nodejs//**)",
+      "Bash(\"/c/Program Files/nodejs/npx.cmd\" vitest --run --reporter=verbose)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" --version)",
+      "Bash(NODE_PATH='/c/Program Files/nodejs' PATH='/c/Program Files/nodejs:__TRACKED_VAR__' '/c/Program Files/nodejs/node.exe' /c/Users/Giannis/Documents/_Web/DnDCompanion/node_modules/.bin/vitest --run)",
+      "Bash(npm run *)"
+    ]
+  }
+}
