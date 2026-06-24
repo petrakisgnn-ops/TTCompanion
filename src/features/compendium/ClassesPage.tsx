@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ReferenceListPage, type RefEntry } from './ReferenceListPage';
 import { useSettingsStore } from '../../stores/settingsStore';
+import type { Entry } from '../../domain/reference/types';
 
 const CLASS_FILES = [
   'artificer','barbarian','bard','cleric','druid',
@@ -75,14 +76,13 @@ export function ClassesPage() {
       }));
 
       entries.push({
+        ...cls,
         key: `${className}|${cls.source}`,
         name: className,
-        source: cls.source,
         subtitle,
         tag: hd ? `d${hd}` : undefined,
         subclasses,
-        entries: featureEntries,
-        ...cls,
+        entries: featureEntries as Entry[],
       });
     }
 

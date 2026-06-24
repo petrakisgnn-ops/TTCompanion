@@ -2,6 +2,7 @@
 import type { WidgetProps } from './registry';
 import { useCharacterStore } from '../stores/characterStore';
 
+
 function Pip({ filled, type }: { filled: boolean; type: 'success' | 'failure' }) {
   const color = type === 'success' ? '#5ec27a' : '#e0556b';
   return (
@@ -15,7 +16,7 @@ function Pip({ filled, type }: { filled: boolean; type: 'success' | 'failure' })
   );
 }
 
-function DeathSavesWidget({ instance, character }: WidgetProps) {
+function DeathSavesWidget({ character }: WidgetProps) {
   const { mutate } = useCharacterStore();
   const saves = character.deathSaves ?? { successes: 0, failures: 0 };
 

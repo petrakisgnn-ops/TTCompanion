@@ -14,14 +14,6 @@ export function ConditionsSection({ character }: ConditionsSectionProps) {
   const activeNonExhaustion = conditions.filter(c => c !== 'Exhaustion');
   const hasAny = activeNonExhaustion.length > 0 || exhaustionLevel > 0;
 
-  const toggle = (cond: string) => {
-    if (conditions.includes(cond)) {
-      removeCondition(character.id, cond);
-    } else {
-      addCondition(character.id, cond);
-    }
-  };
-
   return (
     <div className="space-y-2">
       {/* Active conditions */}

@@ -98,8 +98,6 @@ function SortableWidget({ instance, character, editMode, onRemove, onConfigure }
 
   const WidgetComponent = reg.component;
   const icon = reg.icon ?? 'widgets';
-  const colSpan = instance.span === 2 ? 'col-span-2' : 'col-span-1';
-
   return (
     <div
       ref={setNodeRef}

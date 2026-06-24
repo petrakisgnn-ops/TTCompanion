@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { dexieCharacterRepository } from '../data/repositories/DexieCharacterRepository';
 import type { Character, Currency, ResourceTrack, AbilityScores } from '../domain/character/types';
 import type { RefId } from '../domain/reference/types';
-import { getClassData, isAsiLevel } from '../domain/rules/classData';
+import { getClassData } from '../domain/rules/classData';
 import { computeSpellSlots } from '../domain/rules/spellSlots';
 import { abilityMod } from '../domain/rules';
 

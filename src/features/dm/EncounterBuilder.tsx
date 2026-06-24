@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { db } from '../../data/db';
 import type { StoredMonster } from '../../data/db';
-import { crStr, parseCr } from '../../domain/reference/types';
+import { crStr } from '../../domain/reference/types';
 import { useCharacterStore } from '../../stores/characterStore';
 import { totalLevel } from '../../domain/rules';
 

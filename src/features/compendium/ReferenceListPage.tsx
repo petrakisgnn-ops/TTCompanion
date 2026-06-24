@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+﻿import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { renderEntries } from '../../rendering';
 import type { Entry } from '../../domain/reference/types';

@@ -1,5 +1,4 @@
 ﻿import { useState } from 'react';
-import type { AbilityScores } from '../../../domain/character/types';
 import { abilityMod } from '../../../domain/rules';
 import type { WizardData } from './CharacterWizard';
 
