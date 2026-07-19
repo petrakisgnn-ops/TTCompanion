@@ -18,15 +18,59 @@ const STEPS = ['Race', 'Class', 'Abilities', 'Background', 'Skills', 'Finalize']
 
 export interface WizardData {
   raceRef: RefId | null;
+  subraceRef: RefId | null;
   classRef: RefId | null;
   level: number;
   abilityScores: AbilityScores;
   backgroundRef: RefId | null;
   skills: string[];
+  languages: string[];
   name: string;
 }
 
 const BLANK_SCORES: AbilityScores = { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 };
+
+/**
+ * Some backgrounds grant a feat outright (e.g. Strixhaven college backgrounds grant
+ * "Strixhaven Initiate", which is what actually carries their bonus cantrip/spell
+ * options). Resolve backgroundRef -> background.feats -> matching feats.json entries
+ * so the feat (and whatever it grants) ends up on the new character.
+ */
+async function resolveBackgroundFeats(backgroundRef: RefId): Promise<RefId[]> {
+  try {
+    const [bgRes, featRes] = await Promise.all([
+      fetch(`${import.meta.env.BASE_URL}data/backgrounds.json`),
+      fetch(`${import.meta.env.BASE_URL}data/feats.json`),
+    ]);
+    const bgJson: { background: { name: string; source: string; feats?: Record<string, boolean>[] }[] } = await bgRes.json();
+    const featJson: { feat: { name: string; source: string }[] } = await featRes.json();
+
+    const background = bgJson.background.find(
+      b => b.name === backgroundRef.name && b.source === backgroundRef.source,
+    );
+    if (!background?.feats) return [];
+
+    const keys: string[] = [];
+    for (const grant of background.feats) {
+      for (const [key, granted] of Object.entries(grant)) {
+        if (granted) keys.push(key);
+      }
+    }
+
+    const resolved: RefId[] = [];
+    for (const key of keys) {
+      const [rawName, rawSource] = key.split('|');
+      const match = featJson.feat.find(
+        f => f.name.toLowerCase() === rawName.toLowerCase() &&
+          (!rawSource || f.source.toLowerCase() === rawSource.toLowerCase()),
+      );
+      if (match) resolved.push({ name: match.name, source: match.source });
+    }
+    return resolved;
+  } catch {
+    return [];
+  }
+}
 
 export function CharacterWizard() {
   const navigate = useNavigate();
@@ -34,11 +78,13 @@ export function CharacterWizard() {
   const [step, setStep] = useState(0);
   const [data, setData] = useState<WizardData>({
     raceRef: null,
+    subraceRef: null,
     classRef: null,
     level: 1,
     abilityScores: BLANK_SCORES,
     backgroundRef: null,
     skills: [],
+    languages: [],
     name: '',
   });
 
@@ -66,8 +112,10 @@ export function CharacterWizard() {
   };
 
   const handleFinish = async () => {
-    const { raceRef, classRef, level, abilityScores, backgroundRef, skills, name } = data;
+    const { raceRef, subraceRef, classRef, level, abilityScores, backgroundRef, skills, languages, name } = data;
     if (!raceRef || !classRef || !backgroundRef) return;
+
+    const grantedFeats = await resolveBackgroundFeats(backgroundRef);
 
     const cls = getClassData(classRef.name);
     const conMod = abilityMod(abilityScores.con);
@@ -83,6 +131,7 @@ export function CharacterWizard() {
       name: name.trim(),
       classes: [{ classRef, level }],
       race: raceRef,
+      subrace: subraceRef,
       background: backgroundRef,
       abilityScores,
       hp,
@@ -92,7 +141,7 @@ export function CharacterWizard() {
         weapons: [],
         armor: [],
         tools: [],
-        languages: [],
+        languages,
       },
       hitDiceSpent: 0,
       deathSaves: { successes: 0, failures: 0 },
@@ -101,7 +150,7 @@ export function CharacterWizard() {
       knownSpells: [],
       preparedSpells: [],
       inventory: [],
-      feats: [],
+      feats: grantedFeats,
       resources,
       currency: { pp: 0, gp: 0, ep: 0, sp: 0, cp: 0 },
       dashboard: { widgets: [] },

@@ -59,6 +59,12 @@ export function StepFinalize({ data, patch }: StepFinalizeProps) {
               <span>d{cls.hitDie}</span>
             </div>
           )}
+          {data.languages.length > 0 && (
+            <div className="flex justify-between gap-3">
+              <span className="text-[var(--color-muted)] shrink-0">Languages</span>
+              <span className="text-right">{data.languages.join(', ')}</span>
+            </div>
+          )}
         </div>
 
         {/* Ability scores mini-grid */}

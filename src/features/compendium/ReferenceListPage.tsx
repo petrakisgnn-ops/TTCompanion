@@ -11,6 +11,8 @@ export interface RefEntry {
   tag?: string;
   tagColor?: string;
   entries?: Entry[];
+  /** Extra text matched by search but not displayed (e.g. a subrace's parent race name). */
+  searchAlias?: string;
   [k: string]: unknown;
 }
 
@@ -74,7 +76,10 @@ export function ReferenceListPage({ title, icon, items, loading, detailPath }: P
   const inputRef = useRef<HTMLInputElement>(null);
 
   const filtered = query.trim()
-    ? items.filter(i => i.name.toLowerCase().includes(query.toLowerCase()))
+    ? items.filter(i => {
+        const q = query.toLowerCase();
+        return i.name.toLowerCase().includes(q) || i.searchAlias?.toLowerCase().includes(q);
+      })
     : items;
 
   return (

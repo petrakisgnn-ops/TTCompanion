@@ -19,3 +19,4 @@ import './ActionEconomyWidget';
 import './AttacksWidget';
 import './DeathSavesWidget';
 import './DiceWidget';
+import './FeaturesWidget';

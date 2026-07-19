@@ -44,6 +44,7 @@ export interface Spell {
   entries: Entry[];
   entriesHigherLevel?: Entry[];
   classes?: unknown;
+  reprintedAs?: unknown;
 }
 
 // ── Monster ────────────────────────────────────────────────────────────────

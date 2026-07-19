@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { dexieCharacterRepository } from '../data/repositories/DexieCharacterRepository';
-import type { Character, Currency, ResourceTrack, AbilityScores } from '../domain/character/types';
+import type { Character, Currency, ResourceTrack, AbilityScores, KnownSpellRef } from '../domain/character/types';
 import type { RefId } from '../domain/reference/types';
 import { getClassData } from '../domain/rules/classData';
 import { computeSpellSlots } from '../domain/rules/spellSlots';
@@ -33,6 +33,8 @@ interface CharacterStore {
   }) => Promise<void>;
   addCondition: (id: string, condition: string) => Promise<void>;
   removeCondition: (id: string, condition: string) => Promise<void>;
+  addLanguage: (id: string, language: string) => Promise<void>;
+  removeLanguage: (id: string, language: string) => Promise<void>;
   addInventoryItem: (id: string, item: RefId) => Promise<void>;
   removeInventoryItem: (id: string, itemKey: string) => Promise<void>;
   setInventoryQuantity: (id: string, itemKey: string, qty: number) => Promise<void>;
@@ -46,8 +48,8 @@ interface CharacterStore {
   importAll: (json: string) => Promise<void>;
   addPreparedSpell: (id: string, spell: RefId) => Promise<void>;
   removePreparedSpell: (id: string, spell: RefId) => Promise<void>;
-  addKnownSpell: (id: string, spell: RefId) => Promise<void>;
-  removeKnownSpell: (id: string, spell: RefId) => Promise<void>;
+  addKnownSpell: (id: string, spell: KnownSpellRef) => Promise<void>;
+  removeKnownSpell: (id: string, spell: KnownSpellRef) => Promise<void>;
   addFeat: (id: string, feat: RefId) => Promise<void>;
   removeFeat: (id: string, feat: RefId) => Promise<void>;
 }
@@ -266,6 +268,18 @@ export const useCharacterStore = create<CharacterStore>()((set, get) => ({
       conditions: (c.conditions ?? []).filter(x => x !== condition),
     })),
 
+  addLanguage: (id, language) =>
+    get().mutate(id, c => {
+      if (c.proficiencies.languages.includes(language)) return c;
+      return { ...c, proficiencies: { ...c.proficiencies, languages: [...c.proficiencies.languages, language] } };
+    }),
+
+  removeLanguage: (id, language) =>
+    get().mutate(id, c => ({
+      ...c,
+      proficiencies: { ...c.proficiencies, languages: c.proficiencies.languages.filter(l => l !== language) },
+    })),
+
   setCurrency: (id, patch) =>
     get().mutate(id, c => ({
       ...c,
@@ -330,14 +344,21 @@ export const useCharacterStore = create<CharacterStore>()((set, get) => ({
 
   addKnownSpell: (id, spell) =>
     get().mutate(id, c => {
-      const already = c.knownSpells.some(s => s.name === spell.name && s.source === spell.source);
+      // Matched on name+source+grantedBy so a granted copy (e.g. an innate feat
+      // spell) and a normally-learned copy of the same spell can coexist — they
+      // follow different casting rules.
+      const already = c.knownSpells.some(
+        s => s.name === spell.name && s.source === spell.source && (s.grantedBy ?? null) === (spell.grantedBy ?? null),
+      );
       return already ? c : { ...c, knownSpells: [...c.knownSpells, spell] };
     }),
 
   removeKnownSpell: (id, spell) =>
     get().mutate(id, c => ({
       ...c,
-      knownSpells: c.knownSpells.filter(s => !(s.name === spell.name && s.source === spell.source)),
+      knownSpells: c.knownSpells.filter(
+        s => !(s.name === spell.name && s.source === spell.source && (s.grantedBy ?? null) === (spell.grantedBy ?? null)),
+      ),
     })),
 
   addFeat: (id, feat) =>

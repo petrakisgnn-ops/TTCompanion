@@ -31,10 +31,13 @@ function PreparedSpellsWidget({ character }: WidgetProps) {
     );
   }, [character.preparedSpells]);
 
-  // Resolve known spell RefIds → available pool for preparation
+  // Resolve known spell RefIds → available pool for preparation. Granted spells
+  // (e.g. an innate feat cantrip) aren't "prepared" in the traditional sense — they're
+  // castable on their own regardless of prep — so only normally-learned ones apply here.
   useEffect(() => {
-    if (character.knownSpells.length === 0) { setKnownSpells([]); return; }
-    const keys = character.knownSpells.map(refKey);
+    const normalRefs = character.knownSpells.filter(s => !s.grantedBy);
+    if (normalRefs.length === 0) { setKnownSpells([]); return; }
+    const keys = normalRefs.map(refKey);
     db.spells.bulkGet(keys).then(spells =>
       setKnownSpells(spells.filter((s): s is StoredSpell => s !== undefined)),
     );

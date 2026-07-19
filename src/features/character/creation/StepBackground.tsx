@@ -1,10 +1,13 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import type { WizardData } from './CharacterWizard';
+import { renderEntries } from '../../../rendering';
+import type { Entry } from '../../../domain/reference/types';
 
 interface BgEntry {
   name: string;
   source: string;
   skillProficiencies?: Record<string, boolean>[];
+  entries?: Entry[];
 }
 
 interface StepBackgroundProps {
@@ -47,6 +50,8 @@ export function StepBackground({ data, patch }: StepBackgroundProps) {
     ? `${data.backgroundRef.name}|${data.backgroundRef.source}`
     : null;
 
+  const selected = selectedKey ? backgrounds.find(bg => `${bg.name}|${bg.source}` === selectedKey) : null;
+
   return (
     <div className="pb-4">
       <div className="px-4 py-3 space-y-2">
@@ -88,6 +93,12 @@ export function StepBackground({ data, patch }: StepBackgroundProps) {
           );
         })}
       </div>
+
+      {selected && selected.entries && selected.entries.length > 0 && (
+        <div className="mx-4 mt-3 p-3 bg-[var(--color-card)] rounded-xl text-sm leading-relaxed text-[var(--color-text-2)] space-y-1">
+          {renderEntries(selected.entries)}
+        </div>
+      )}
     </div>
   );
 }

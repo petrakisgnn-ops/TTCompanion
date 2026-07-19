@@ -9,12 +9,14 @@ import { SkillsSection } from './SkillsSection';
 import { ResourceSection } from './ResourceSection';
 import { KnownSpellsTab } from './KnownSpellsTab';
 import { FeatsTab } from './FeatsTab';
+import { FeaturesTab } from './FeaturesTab';
+import { LanguagesSection } from './LanguagesSection';
 import { CurrencySection } from './CurrencySection';
 import { ConditionsSection } from './ConditionsSection';
 import { InventoryTab } from './InventoryTab';
 import { LevelUpSheet } from './LevelUpSheet';
 
-type Tab = 'stats' | 'resources' | 'spells' | 'feats' | 'inventory' | 'notes';
+type Tab = 'stats' | 'features' | 'resources' | 'spells' | 'feats' | 'inventory' | 'notes';
 
 export function CharacterSheetPage() {
   const { id } = useParams<{ id: string }>();
@@ -81,6 +83,7 @@ export function CharacterSheetPage() {
 
   const TABS: { key: Tab; label: string }[] = [
     { key: 'stats',     label: 'Stats'      },
+    { key: 'features',  label: 'Features'   },
     { key: 'resources', label: 'Resources'  },
     { key: 'spells',    label: 'Spells'     },
     { key: 'feats',     label: 'Feats'      },
@@ -103,7 +106,8 @@ export function CharacterSheetPage() {
             <div>
               <h1 className="text-xl font-bold leading-tight">{character.name}</h1>
               <p className="text-sm text-[var(--color-muted)]">
-                {character.race.name} · {classLabel} · Level {level}
+                {character.subrace ? `${character.subrace.name} (${character.race.name})` : character.race.name}
+                {' · '}{classLabel} · Level {level}
               </p>
             </div>
             {level < 20 && (
@@ -201,8 +205,17 @@ export function CharacterSheetPage() {
               profSaves={character.proficiencies.saves}
               totalLevel={level}
             />
+
+            {/* Languages */}
+            <div className="bg-[var(--color-card)] rounded-xl px-4 py-3 space-y-2">
+              <h2 className="text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wide">Languages</h2>
+              <LanguagesSection character={character} />
+            </div>
           </>
         )}
+
+        {/* ── Features tab ── */}
+        {tab === 'features' && <FeaturesTab character={character} />}
 
         {/* ── Resources tab ── */}
         {tab === 'resources' && (

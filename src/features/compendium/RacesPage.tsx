@@ -2,6 +2,7 @@
 import { ReferenceListPage, type RefEntry } from './ReferenceListPage';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { matchesEdition } from '../../domain/rules/edition';
+import { buildRaceOptions, type RawRace, type RawSubrace } from '../../domain/reference/races';
 
 const SIZE_LABEL: Record<string, string> = { M: 'Medium', S: 'Small', V: 'Varies' };
 
@@ -13,9 +14,10 @@ export function RacesPage() {
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}data/races.json`)
       .then(r => r.json())
-      .then((data: { race: Record<string, unknown>[] }) => {
-        const entries: RefEntry[] = data.race.map(r => {
-          const speed = r.speed as { walk?: number; fly?: number; swim?: number; climb?: number } | number | undefined;
+      .then((data: { race: RawRace[]; subrace: RawSubrace[] }) => {
+        const options = buildRaceOptions(data.race, data.subrace);
+        const entries: RefEntry[] = options.map(opt => {
+          const speed = opt.speed;
           const speedParts: string[] = [];
           if (typeof speed === 'number') speedParts.push(`${speed} ft.`);
           else if (speed) {
@@ -24,17 +26,23 @@ export function RacesPage() {
             if (speed.swim) speedParts.push(`swim ${speed.swim} ft.`);
             if (speed.climb) speedParts.push(`climb ${speed.climb} ft.`);
           }
-          const sizes = (r.size as string[] | undefined) ?? [];
+          const sizes = opt.size ?? [];
           const sizeStr = sizes.map(s => SIZE_LABEL[s] ?? s).join('/');
+          const subtitle = [
+            opt.subraceName ? opt.raceName : null,
+            sizeStr,
+            speedParts.join(', '),
+          ].filter(Boolean).join(' · ');
 
           return {
-            key: `${r.name}|${r.source}`,
-            name: r.name as string,
-            source: r.source as string,
-            subtitle: [sizeStr, speedParts.join(', ')].filter(Boolean).join(' · '),
-            tag: r.source as string,
-            entries: (r.entries as RefEntry['entries']) ?? [],
-            ...r,
+            key: opt.key,
+            name: opt.name,
+            source: opt.source,
+            subtitle,
+            tag: opt.source,
+            entries: opt.entries,
+            reprintedAs: opt.reprintedAs,
+            searchAlias: opt.subraceName ? opt.raceName : undefined,
           };
         });
         setAllItems(entries);

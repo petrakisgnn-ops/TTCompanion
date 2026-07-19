@@ -11,12 +11,14 @@ function ConcentrationWidget({ character }: WidgetProps) {
   const [picking, setPicking] = useState(false);
   const [concSpells, setConcSpells] = useState<StoredSpell[]>([]);
 
-  // Resolve known/prepared spells that have concentration
+  // Resolve known/prepared spells that have concentration. A spell can appear twice
+  // in knownSpells (a granted copy + a normal copy) — dedupe by key since concentration
+  // doesn't distinguish how a spell was learned.
   const refs = character.knownSpells.length > 0 ? character.knownSpells : character.preparedSpells;
 
   useEffect(() => {
     if (refs.length === 0) { setConcSpells([]); return; }
-    const keys = refs.map(refKey);
+    const keys = [...new Set(refs.map(refKey))];
     db.spells.bulkGet(keys).then(results => {
       const conc = results.filter((s): s is StoredSpell => {
         if (!s) return false;
