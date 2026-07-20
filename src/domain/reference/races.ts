@@ -7,6 +7,7 @@ export interface RawRace {
   speed?: number | { walk?: number; fly?: number; swim?: number; climb?: number };
   entries?: Entry[];
   reprintedAs?: unknown;
+  ability?: unknown;
   [k: string]: unknown;
 }
 
@@ -19,6 +20,7 @@ export interface RawSubrace {
   speed?: number | { walk?: number; fly?: number; swim?: number; climb?: number };
   entries?: Entry[];
   reprintedAs?: unknown;
+  ability?: unknown;
   _copy?: unknown;
   [k: string]: unknown;
 }
@@ -37,6 +39,10 @@ export interface RaceOption {
   speed?: RawRace['speed'];
   entries: Entry[];
   reprintedAs?: unknown;
+  /** Raw `ability` block from the race record (Human-quirk-resolved — see buildRaceOptions). */
+  raceAbility?: unknown;
+  /** Raw `ability` block from the subrace record, if this option is a subrace. */
+  subraceAbility?: unknown;
 }
 
 /**
@@ -52,6 +58,13 @@ export function buildRaceOptions(races: RawRace[], subraces: RawSubrace[]): Race
   const options: RaceOption[] = [];
 
   for (const race of races) {
+    // Some races (notably Human|PHB, whose +1-to-all-abilities bonus lives here) split
+    // their `ability` data onto an unnamed linking subrace record rather than the race
+    // record itself. Fall back to that record's `ability` when the race's own is absent.
+    const linkedAbility = race.ability ?? subraces.find(
+      s => !s.name && s.raceName === race.name && s.raceSource === race.source,
+    )?.ability;
+
     options.push({
       key: `${race.name}|${race.source}`,
       raceName: race.name,
@@ -62,6 +75,7 @@ export function buildRaceOptions(races: RawRace[], subraces: RawSubrace[]): Race
       speed: race.speed,
       entries: race.entries ?? [],
       reprintedAs: race.reprintedAs,
+      raceAbility: linkedAbility,
     });
   }
 
@@ -71,6 +85,14 @@ export function buildRaceOptions(races: RawRace[], subraces: RawSubrace[]): Race
     if (!parent) continue;
 
     const combinedEntries = [...(parent.entries ?? []), ...(sub.entries ?? [])];
+    // Only inherit the race's own direct `ability` block here (e.g. Elf's +2 Dex,
+    // which High/Wood Elf/Drow genuinely stack on top of). The "unnamed linking
+    // subrace" fallback used above is Human-specific and represents the *no-subrace-
+    // chosen* bonus — it must NOT leak into named subraces like "Variant", "Keldon",
+    // or the Eberron dragonmarks, which are complete replacement packages (e.g.
+    // Variant Human's choose-2 ASI replaces the +1-to-all entirely; it doesn't stack
+    // with it).
+    const parentAbility = parent.ability;
 
     options.push({
       key: `${sub.name}|${sub.source}::${parent.name}|${parent.source}`,
@@ -88,6 +110,8 @@ export function buildRaceOptions(races: RawRace[], subraces: RawSubrace[]): Race
       speed: sub.speed ?? parent.speed,
       entries: combinedEntries,
       reprintedAs: sub.reprintedAs,
+      raceAbility: parentAbility,
+      subraceAbility: sub.ability,
     });
   }
 

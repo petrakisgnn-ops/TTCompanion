@@ -38,6 +38,22 @@ export interface Currency {
   cp: number;
 }
 
+export interface Personality {
+  trait: string;
+  ideal: string;
+  bond: string;
+  flaw: string;
+}
+
+export interface Appearance {
+  age: string;
+  height: string;
+  weight: string;
+  eyes: string;
+  skin: string;
+  hair: string;
+}
+
 export interface KnownSpellRef extends RefId {
   /**
    * Set when this entry was gained via a race/background/feat grant rather than
@@ -57,6 +73,9 @@ export interface Character {
   race: RefId;
   subrace?: RefId | null;
   background: RefId;
+  alignment: string | null;
+  personality: Personality;
+  appearance: Appearance;
   abilityScores: AbilityScores;
   hp: { max: number; current: number; temp: number };
   hitDiceSpent: number;

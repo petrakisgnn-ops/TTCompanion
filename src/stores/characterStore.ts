@@ -2,8 +2,7 @@ import { create } from 'zustand';
 import { dexieCharacterRepository } from '../data/repositories/DexieCharacterRepository';
 import type { Character, Currency, ResourceTrack, AbilityScores, KnownSpellRef } from '../domain/character/types';
 import type { RefId } from '../domain/reference/types';
-import { getClassData } from '../domain/rules/classData';
-import { computeSpellSlots } from '../domain/rules/spellSlots';
+import { recomputeAllResources } from '../domain/rules/resources';
 import { abilityMod } from '../domain/rules';
 
 interface CharacterStore {
@@ -30,6 +29,13 @@ interface CharacterStore {
     hpGain: number;
     abilityBoosts?: Partial<AbilityScores>;
     subclass?: RefId;
+  }) => Promise<void>;
+  /** Multiclass into a class the character doesn't have yet — starts at level 1 in it. */
+  addClass: (id: string, opts: {
+    classRef: RefId;
+    hpGain: number;
+    subclass?: RefId;
+    proficiencies: { armor: string[]; weapons: string[]; tool?: string; skill?: string };
   }) => Promise<void>;
   addCondition: (id: string, condition: string) => Promise<void>;
   removeCondition: (id: string, condition: string) => Promise<void>;
@@ -231,29 +237,47 @@ export const useCharacterStore = create<CharacterStore>()((set, get) => ({
         hp.current += conModDelta * newLevel;
       }
 
-      // 4. Recalculate spell slots for the leveled class
-      const classData = getClassData(classes[classIndex].classRef.name);
-      let resources = [...c.resources];
-      if (classData && classData.spellcasting !== 'none') {
-        const newSlots = computeSpellSlots(classData.spellcasting, newLevel);
-        // Keep non-slot resources; rebuild slot tracks
-        const nonSlots = resources.filter(r => !r.id.startsWith('slot-') && r.id !== 'pact');
-        resources = [
-          ...nonSlots,
-          ...newSlots.map(newTrack => {
-            const existing = c.resources.find(r => r.id === newTrack.id);
-            if (!existing) return newTrack; // new slot level: full
-            const gained = newTrack.max - existing.max;
-            return {
-              ...existing,
-              max: newTrack.max,
-              current: Math.min(newTrack.max, existing.current + Math.max(0, gained)),
-            };
-          }),
-        ];
-      }
+      // 4. Recalculate spell slots (combined across all classes — see recomputeAllResources)
+      // and every class's own resource pools (Rage, Ki, Channel Divinity, ...). Runs
+      // unconditionally over ALL classes, not just the one leveled — a multiclass caster's
+      // combined slot count depends on every class's level, not just the one that changed.
+      const resources = recomputeAllResources(classes, c.resources, abilityScores);
 
       return { ...c, classes, hp, abilityScores, resources };
+    }),
+
+  addClass: (id, { classRef, hpGain, subclass, proficiencies }) =>
+    get().mutate(id, c => {
+      if (c.classes.some(cl => cl.classRef.name === classRef.name)) return c; // already have it
+
+      const classes = [...c.classes, { classRef, level: 1, ...(subclass ? { subclass } : {}) }];
+
+      const hp = { ...c.hp, max: c.hp.max + hpGain, current: c.hp.current + hpGain };
+
+      const mergedSkills = proficiencies.skill && !c.proficiencies.skills.includes(proficiencies.skill)
+        ? [...c.proficiencies.skills, proficiencies.skill]
+        : c.proficiencies.skills;
+      const mergedTools = proficiencies.tool && !c.proficiencies.tools.includes(proficiencies.tool)
+        ? [...c.proficiencies.tools, proficiencies.tool]
+        : c.proficiencies.tools;
+      const mergedArmor = [...new Set([...c.proficiencies.armor, ...proficiencies.armor])];
+      const mergedWeapons = [...new Set([...c.proficiencies.weapons, ...proficiencies.weapons])];
+
+      const resources = recomputeAllResources(classes, c.resources, c.abilityScores);
+
+      return {
+        ...c,
+        classes,
+        hp,
+        proficiencies: {
+          ...c.proficiencies,
+          skills: mergedSkills,
+          tools: mergedTools,
+          armor: mergedArmor,
+          weapons: mergedWeapons,
+        },
+        resources,
+      };
     }),
 
   addCondition: (id, condition) =>

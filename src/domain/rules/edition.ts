@@ -26,10 +26,12 @@ export function matchesEdition(
   // 5.5e mode
   if (is2024) return true;
 
-  // Classic source: hide only if reprinted in a 2024 source
-  const reprints: string[] = Array.isArray(reprintedAs) ? (reprintedAs as string[]) : [];
+  // Classic source: hide only if reprinted in a 2024 source. Entries are usually
+  // plain "Name|SOURCE" strings, but some (e.g. Eberron dragonmark subraces
+  // reprinted as feats) are `{uid, tag}` objects instead — only strings count here.
+  const reprints: unknown[] = Array.isArray(reprintedAs) ? reprintedAs : [];
   const hasXphbReprint = reprints.some(r =>
-    [...SOURCES_2024].some(s => r.toUpperCase().includes(s)),
+    typeof r === 'string' && [...SOURCES_2024].some(s => r.toUpperCase().includes(s)),
   );
   return !hasXphbReprint;
 }

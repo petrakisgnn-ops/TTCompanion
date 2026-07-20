@@ -2,12 +2,15 @@
 import type { WizardData } from './CharacterWizard';
 import { renderEntries } from '../../../rendering';
 import type { Entry } from '../../../domain/reference/types';
+import { useSettingsStore } from '../../../stores/settingsStore';
+import { matchesEdition } from '../../../domain/rules/edition';
 
 interface BgEntry {
   name: string;
   source: string;
   skillProficiencies?: Record<string, boolean>[];
   entries?: Entry[];
+  reprintedAs?: unknown;
 }
 
 interface StepBackgroundProps {
@@ -25,6 +28,7 @@ function skillSummary(bg: BgEntry): string {
 }
 
 export function StepBackground({ data, patch }: StepBackgroundProps) {
+  const { edition } = useSettingsStore();
   const [backgrounds, setBackgrounds] = useState<BgEntry[]>([]);
   const [query, setQuery] = useState('');
 
@@ -42,9 +46,10 @@ export function StepBackground({ data, patch }: StepBackgroundProps) {
   }, []);
 
   const filtered = useMemo(() => {
+    const inEdition = backgrounds.filter(b => matchesEdition(b.source, b.reprintedAs, edition));
     const q = query.toLowerCase();
-    return q ? backgrounds.filter(b => b.name.toLowerCase().includes(q)) : backgrounds;
-  }, [backgrounds, query]);
+    return q ? inEdition.filter(b => b.name.toLowerCase().includes(q)) : inEdition;
+  }, [backgrounds, query, edition]);
 
   const selectedKey = data.backgroundRef
     ? `${data.backgroundRef.name}|${data.backgroundRef.source}`

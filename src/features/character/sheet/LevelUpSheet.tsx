@@ -1,21 +1,34 @@
 ﻿import { useEffect, useState } from 'react';
 import { useCharacterStore } from '../../../stores/characterStore';
+import { useSettingsStore, type Edition } from '../../../stores/settingsStore';
 import type { Character, AbilityScores } from '../../../domain/character/types';
 import type { RefId } from '../../../domain/reference/types';
 import { getClassData, isAsiLevel, subclassLevel } from '../../../domain/rules/classData';
+import { matchesEdition } from '../../../domain/rules/edition';
 import { abilityMod, totalLevel } from '../../../domain/rules';
 
 interface RawSubclass { name: string; source: string; reprintedAs?: unknown }
 
-async function fetchSubclasses(className: string): Promise<RefId[]> {
-  const file = `/data/class/class-${className.toLowerCase()}.json`;
+async function fetchSubclasses(className: string, edition: Edition): Promise<RefId[]> {
+  const file = `${import.meta.env.BASE_URL}data/class/class-${className.toLowerCase()}.json`;
   try {
     const res = await fetch(file);
     if (!res.ok) return [];
     const json = await res.json() as { subclass?: RawSubclass[] };
-    return (json.subclass ?? [])
-      .filter(s => !s.reprintedAs)
-      .map(s => ({ name: s.name, source: s.source }));
+    // The raw data lists every subclass more than once: a "reprintedAs" stub pointing at its
+    // 2024 successor (skip), plus separate PHB and XPHB entries sharing the exact same display
+    // name — filter to the active edition like Race/Background already do, then dedupe.
+    const seen = new Set<string>();
+    const result: RefId[] = [];
+    for (const s of json.subclass ?? []) {
+      if (s.reprintedAs) continue;
+      if (!matchesEdition(s.source, null, edition)) continue;
+      const key = `${s.name}|${s.source}`.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push({ name: s.name, source: s.source });
+    }
+    return result;
   } catch { return []; }
 }
 
@@ -31,6 +44,7 @@ interface LevelUpSheetProps {
 
 export function LevelUpSheet({ character, onClose }: LevelUpSheetProps) {
   const { levelUp } = useCharacterStore();
+  const { edition } = useSettingsStore();
   const level = totalLevel(character.classes);
 
   const [classIndex, setClassIndex] = useState(0);
@@ -54,8 +68,8 @@ export function LevelUpSheet({ character, onClose }: LevelUpSheetProps) {
   useEffect(() => {
     if (!picksSubclass) return;
     setChosenSubclass(null);
-    fetchSubclasses(selectedClass.classRef.name).then(setAvailableSubclasses);
-  }, [picksSubclass, selectedClass.classRef.name]);
+    fetchSubclasses(selectedClass.classRef.name, edition).then(setAvailableSubclasses);
+  }, [picksSubclass, selectedClass.classRef.name, edition]);
 
   if (level >= 20) {
     return (

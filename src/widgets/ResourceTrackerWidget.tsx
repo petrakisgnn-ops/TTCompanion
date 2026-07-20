@@ -19,7 +19,9 @@ function ResourceTrackerWidget({ instance, character }: WidgetProps) {
     );
   }
 
-  const pips = Array.from({ length: resource.max });
+  // Large point pools (e.g. Paladin's Lay on Hands, up to 100 at level 20) render as a
+  // +/- stepper instead of one checkbox per point — a 100-pip grid isn't usable UI.
+  const isLargePool = resource.max > 20;
 
   return (
     <div className="p-3 space-y-2">
@@ -29,26 +31,46 @@ function ResourceTrackerWidget({ instance, character }: WidgetProps) {
           {resource.current}/{resource.max}
         </span>
       </div>
-      <div className="flex gap-1.5 flex-wrap">
-        {pips.map((_, i) => {
-          const filled = i < resource.current;
-          return (
-            <button
-              key={i}
-              onClick={() =>
-                filled
-                  ? spendResource(character.id, resource.id)
-                  : restoreResource(character.id, resource.id)
-              }
-              className={`w-7 h-7 rounded-md border-2 transition-colors ${
-                filled
-                  ? 'bg-amber-500 border-amber-500'
-                  : 'border-slate-600 hover:border-amber-600'
-              }`}
-            />
-          );
-        })}
-      </div>
+      {isLargePool ? (
+        <div className="flex items-center justify-center gap-3">
+          <button
+            onClick={() => spendResource(character.id, resource.id)}
+            disabled={resource.current <= 0}
+            className="w-9 h-9 rounded-lg bg-slate-700 font-bold text-lg hover:bg-slate-600 disabled:opacity-30 flex items-center justify-center"
+          >
+            −
+          </button>
+          <span className="text-xl font-bold w-16 text-center">{resource.current}</span>
+          <button
+            onClick={() => restoreResource(character.id, resource.id)}
+            disabled={resource.current >= resource.max}
+            className="w-9 h-9 rounded-lg bg-slate-700 font-bold text-lg hover:bg-slate-600 disabled:opacity-30 flex items-center justify-center"
+          >
+            +
+          </button>
+        </div>
+      ) : (
+        <div className="flex gap-1.5 flex-wrap">
+          {Array.from({ length: resource.max }).map((_, i) => {
+            const filled = i < resource.current;
+            return (
+              <button
+                key={i}
+                onClick={() =>
+                  filled
+                    ? spendResource(character.id, resource.id)
+                    : restoreResource(character.id, resource.id)
+                }
+                className={`w-7 h-7 rounded-md border-2 transition-colors ${
+                  filled
+                    ? 'bg-amber-500 border-amber-500'
+                    : 'border-slate-600 hover:border-amber-600'
+                }`}
+              />
+            );
+          })}
+        </div>
+      )}
       <p className="text-xs text-slate-600">
         Resets on {resource.resetOn === 'shortRest' ? 'short rest' : 'long rest'}
       </p>

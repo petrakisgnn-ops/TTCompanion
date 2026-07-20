@@ -14,6 +14,9 @@ function normalize(c: Character): Character {
     knownSpells: c.knownSpells ?? [],
     preparedSpells: c.preparedSpells ?? [],
     feats: c.feats ?? [],
+    alignment: c.alignment ?? null,
+    personality: c.personality ?? { trait: '', ideal: '', bond: '', flaw: '' },
+    appearance: c.appearance ?? { age: '', height: '', weight: '', eyes: '', skin: '', hair: '' },
   };
 }
 

@@ -112,6 +112,29 @@ export function computeSpellSlots(
   }
 }
 
+/**
+ * Multiclass spell slots (PHB p.164) are NOT the sum of each class's own table — every
+ * spellcasting class contributes a "caster level" to one shared full-caster table: full
+ * casters count their level in full, half-casters (Paladin/Ranger) count `floor(level/2)`,
+ * Artificer counts `ceil(level/2)` (Tasha's errata — rounds the opposite way from the other
+ * half-casters), Warlock's Pact Magic and non-casters contribute nothing (Pact Magic is always
+ * tracked separately, never folded into this pool — see `computeSpellSlots('pact', ...)`).
+ */
+export function computeMulticlassSpellSlots(
+  classes: { classRef: { name: string }; level: number; spellcasting: SpellcastingType }[],
+): ResourceTrack[] {
+  let combined = 0;
+  for (const cl of classes) {
+    switch (cl.spellcasting) {
+      case 'full': combined += cl.level; break;
+      case 'half': combined += Math.floor(cl.level / 2); break;
+      case 'artificer': combined += Math.ceil(cl.level / 2); break;
+      // 'pact' and 'none' contribute 0
+    }
+  }
+  return combined > 0 ? computeSpellSlots('full', Math.min(20, combined)) : [];
+}
+
 export function maxHp(hitDie: number, level: number, conMod: number): number {
   const lvl1 = hitDie + conMod;
   const perLevel = Math.floor(hitDie / 2) + 1 + conMod;

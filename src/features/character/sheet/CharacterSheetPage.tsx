@@ -15,6 +15,9 @@ import { CurrencySection } from './CurrencySection';
 import { ConditionsSection } from './ConditionsSection';
 import { InventoryTab } from './InventoryTab';
 import { LevelUpSheet } from './LevelUpSheet';
+import { AddClassSheet } from './AddClassSheet';
+import { IdentitySection } from './IdentitySection';
+import { CLASSES } from '../../../domain/rules/classData';
 
 type Tab = 'stats' | 'features' | 'resources' | 'spells' | 'feats' | 'inventory' | 'notes';
 
@@ -26,6 +29,7 @@ export function CharacterSheetPage() {
   const [editNotes, setEditNotes] = useState(false);
   const [notesVal, setNotesVal] = useState('');
   const [showLevelUp, setShowLevelUp] = useState(false);
+  const [showAddClass, setShowAddClass] = useState(false);
 
   useEffect(() => {
     if (!loaded) load();
@@ -88,7 +92,7 @@ export function CharacterSheetPage() {
     { key: 'spells',    label: 'Spells'     },
     { key: 'feats',     label: 'Feats'      },
     { key: 'inventory', label: 'Inventory'  },
-    { key: 'notes',     label: 'Notes'      },
+    { key: 'notes',     label: 'Details'    },
   ];
 
   return (
@@ -111,12 +115,22 @@ export function CharacterSheetPage() {
               </p>
             </div>
             {level < 20 && (
-              <button
-                onClick={() => setShowLevelUp(true)}
-                className="shrink-0 text-xs font-semibold bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30 px-3 py-1.5 rounded-xl transition-colors"
-              >
-                Level Up
-              </button>
+              <div className="shrink-0 flex flex-col gap-1.5 items-end">
+                <button
+                  onClick={() => setShowLevelUp(true)}
+                  className="text-xs font-semibold bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30 px-3 py-1.5 rounded-xl transition-colors"
+                >
+                  Level Up
+                </button>
+                {character.classes.length < CLASSES.length && (
+                  <button
+                    onClick={() => setShowAddClass(true)}
+                    className="text-xs font-semibold bg-violet-500/20 text-violet-300 hover:bg-violet-500/30 border border-violet-500/30 px-3 py-1.5 rounded-xl transition-colors"
+                  >
+                    + Multiclass
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -239,9 +253,10 @@ export function CharacterSheetPage() {
         {/* ── Inventory tab ── */}
         {tab === 'inventory' && <InventoryTab character={character} />}
 
-        {/* ── Notes tab ── */}
+        {/* ── Details tab ── */}
         {tab === 'notes' && (
           <div className="space-y-3">
+            <IdentitySection character={character} />
             {editNotes ? (
               <>
                 <textarea
@@ -289,6 +304,9 @@ export function CharacterSheetPage() {
 
       {showLevelUp && (
         <LevelUpSheet character={character} onClose={() => setShowLevelUp(false)} />
+      )}
+      {showAddClass && (
+        <AddClassSheet character={character} onClose={() => setShowAddClass(false)} />
       )}
     </div>
   );

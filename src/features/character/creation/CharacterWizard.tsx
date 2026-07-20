@@ -1,10 +1,11 @@
 ﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { AbilityScores, Character } from '../../../domain/character/types';
+import type { AbilityScores, Character, Currency, InventoryItem } from '../../../domain/character/types';
 import type { RefId } from '../../../domain/reference/types';
 import { computeSpellSlots, maxHp } from '../../../domain/rules/spellSlots';
+import { computeClassResources } from '../../../domain/rules/classResources';
 import { abilityMod } from '../../../domain/rules';
-import { getClassData } from '../../../domain/rules/classData';
+import { getClassData, subclassLevel } from '../../../domain/rules/classData';
 import { CLASS_SKILLS } from '../../../domain/rules/classSkills';
 import { useCharacterStore } from '../../../stores/characterStore';
 import { StepRace } from './StepRace';
@@ -12,23 +13,49 @@ import { StepClass } from './StepClass';
 import { StepAbilities } from './StepAbilities';
 import { StepBackground } from './StepBackground';
 import { StepSkills } from './StepSkills';
+import { StepEquipment } from './StepEquipment';
 import { StepFinalize } from './StepFinalize';
 
-const STEPS = ['Race', 'Class', 'Abilities', 'Background', 'Skills', 'Finalize'];
+const STEPS = ['Race', 'Class', 'Background', 'Abilities', 'Skills', 'Equipment', 'Finalize'];
 
 export interface WizardData {
   raceRef: RefId | null;
   subraceRef: RefId | null;
   classRef: RefId | null;
+  /** Only set (and required) for classes that pick their subclass at level 1 — see StepClass. */
+  subclassRef: RefId | null;
   level: number;
   abilityScores: AbilityScores;
+  /** Resolved race (5e) or background (5.5e) ability bonus — see StepAbilities. */
+  abilityBonus: Partial<AbilityScores>;
   backgroundRef: RefId | null;
   skills: string[];
   languages: string[];
+  tools: string[];
+  /** Bonus skill/feat granted by some race variants (e.g. Variant Human) — see StepSkills. */
+  raceBonusSkill: string | null;
+  raceBonusFeat: RefId | null;
+  /** Resolved class/background starting equipment — see StepEquipment. */
+  resolvedInventory: InventoryItem[];
+  resolvedCurrency: Currency;
+  /** Freeform (non-catalog) starting equipment, e.g. "vestments" — appended to character notes. */
+  equipmentNotes: string;
+  alignment: string | null;
+  personalityTrait: string;
+  personalityIdeal: string;
+  personalityBond: string;
+  personalityFlaw: string;
+  age: string;
+  height: string;
+  weight: string;
+  eyes: string;
+  skin: string;
+  hair: string;
   name: string;
 }
 
 const BLANK_SCORES: AbilityScores = { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 };
+const ZERO_CURRENCY: Currency = { pp: 0, gp: 0, ep: 0, sp: 0, cp: 0 };
 
 /**
  * Some backgrounds grant a feat outright (e.g. Strixhaven college backgrounds grant
@@ -59,7 +86,11 @@ async function resolveBackgroundFeats(backgroundRef: RefId): Promise<RefId[]> {
 
     const resolved: RefId[] = [];
     for (const key of keys) {
-      const [rawName, rawSource] = key.split('|');
+      const [rawNameWithQualifier, rawSource] = key.split('|');
+      // Some grants parameterize the feat, e.g. "magic initiate; cleric|xphb" —
+      // the part after ";" (which class/list to draw from) isn't part of the feat's
+      // own name, so only match on what's before it.
+      const rawName = rawNameWithQualifier.split(';')[0].trim();
       const match = featJson.feat.find(
         f => f.name.toLowerCase() === rawName.toLowerCase() &&
           (!rawSource || f.source.toLowerCase() === rawSource.toLowerCase()),
@@ -80,11 +111,30 @@ export function CharacterWizard() {
     raceRef: null,
     subraceRef: null,
     classRef: null,
+    subclassRef: null,
     level: 1,
     abilityScores: BLANK_SCORES,
+    abilityBonus: {},
     backgroundRef: null,
     skills: [],
     languages: [],
+    tools: [],
+    raceBonusSkill: null,
+    raceBonusFeat: null,
+    resolvedInventory: [],
+    resolvedCurrency: ZERO_CURRENCY,
+    equipmentNotes: '',
+    alignment: null,
+    personalityTrait: '',
+    personalityIdeal: '',
+    personalityBond: '',
+    personalityFlaw: '',
+    age: '',
+    height: '',
+    weight: '',
+    eyes: '',
+    skin: '',
+    hair: '',
     name: '',
   });
 
@@ -94,9 +144,14 @@ export function CharacterWizard() {
   const canAdvance = (): boolean => {
     switch (step) {
       case 0: return data.raceRef !== null;
-      case 1: return data.classRef !== null;
-      case 2: return Object.values(data.abilityScores).every(v => v >= 1);
-      case 3: return data.backgroundRef !== null;
+      case 1: {
+        if (data.classRef === null) return false;
+        // Cleric/Sorcerer/Warlock must pick their subclass here — it's the only chance they get.
+        if (subclassLevel(data.classRef.name) === 1) return data.subclassRef !== null;
+        return true;
+      }
+      case 2: return data.backgroundRef !== null;
+      case 3: return Object.values(data.abilityScores).every(v => v >= 1);
       case 4: {
         // Skills step: must have picked the required number of class skills
         // (background skills are auto-granted so we just check we have at least the class count)
@@ -106,41 +161,70 @@ export function CharacterWizard() {
         // as background skills alone satisfy the step if class has 0 picks)
         return data.skills.length > 0 || required === 0;
       }
-      case 5: return data.name.trim().length > 0;
+      case 5: return true; // Equipment step: choices are optional, always advanceable
+      case 6: return data.name.trim().length > 0;
       default: return false;
     }
   };
 
   const handleFinish = async () => {
-    const { raceRef, subraceRef, classRef, level, abilityScores, backgroundRef, skills, languages, name } = data;
+    const {
+      raceRef, subraceRef, classRef, subclassRef, level, abilityScores, abilityBonus, backgroundRef,
+      skills, languages, tools, raceBonusFeat,
+      resolvedInventory, resolvedCurrency, equipmentNotes,
+      alignment, personalityTrait, personalityIdeal, personalityBond, personalityFlaw,
+      age, height, weight, eyes, skin, hair, name,
+    } = data;
     if (!raceRef || !classRef || !backgroundRef) return;
 
-    const grantedFeats = await resolveBackgroundFeats(backgroundRef);
+    const backgroundFeats = await resolveBackgroundFeats(backgroundRef);
+    const grantedFeats = raceBonusFeat ? [...backgroundFeats, raceBonusFeat] : backgroundFeats;
+
+    // Bake the resolved race (5e) / background (5.5e) ability bonus into the final
+    // scores now — the character sheet just deals in real final scores from here on.
+    const finalScores: AbilityScores = {
+      str: abilityScores.str + (abilityBonus.str ?? 0),
+      dex: abilityScores.dex + (abilityBonus.dex ?? 0),
+      con: abilityScores.con + (abilityBonus.con ?? 0),
+      int: abilityScores.int + (abilityBonus.int ?? 0),
+      wis: abilityScores.wis + (abilityBonus.wis ?? 0),
+      cha: abilityScores.cha + (abilityBonus.cha ?? 0),
+    };
 
     const cls = getClassData(classRef.name);
-    const conMod = abilityMod(abilityScores.con);
+    const conMod = abilityMod(finalScores.con);
     const hp = cls
       ? { max: maxHp(cls.hitDie, level, conMod), current: 0, temp: 0 }
       : { max: 10, current: 0, temp: 0 };
     hp.current = hp.max;
 
-    const resources = cls ? computeSpellSlots(cls.spellcasting, level) : [];
+    const resources = cls
+      ? [...computeSpellSlots(cls.spellcasting, level), ...computeClassResources(classRef.name, level, finalScores)]
+      : [];
 
     const character: Character = {
       id: crypto.randomUUID(),
       name: name.trim(),
-      classes: [{ classRef, level }],
+      classes: [{ classRef, level, subclass: subclassRef ?? undefined }],
       race: raceRef,
       subrace: subraceRef,
       background: backgroundRef,
-      abilityScores,
+      alignment,
+      personality: {
+        trait: personalityTrait,
+        ideal: personalityIdeal,
+        bond: personalityBond,
+        flaw: personalityFlaw,
+      },
+      appearance: { age, height, weight, eyes, skin, hair },
+      abilityScores: finalScores,
       hp,
       proficiencies: {
         skills,
         saves: cls?.saves ?? [],
         weapons: [],
         armor: [],
-        tools: [],
+        tools,
         languages,
       },
       hitDiceSpent: 0,
@@ -149,12 +233,12 @@ export function CharacterWizard() {
       conditions: [],
       knownSpells: [],
       preparedSpells: [],
-      inventory: [],
+      inventory: resolvedInventory,
       feats: grantedFeats,
       resources,
-      currency: { pp: 0, gp: 0, ep: 0, sp: 0, cp: 0 },
+      currency: resolvedCurrency,
       dashboard: { widgets: [] },
-      notes: '',
+      notes: equipmentNotes ? `Starting equipment: ${equipmentNotes.split('\n').join(', ')}` : '',
     };
 
     await createCharacter(character);
@@ -196,10 +280,11 @@ export function CharacterWizard() {
       <div className="pb-24">
         {step === 0 && <StepRace {...stepProps} />}
         {step === 1 && <StepClass {...stepProps} />}
-        {step === 2 && <StepAbilities {...stepProps} />}
-        {step === 3 && <StepBackground {...stepProps} />}
+        {step === 2 && <StepBackground {...stepProps} />}
+        {step === 3 && <StepAbilities {...stepProps} />}
         {step === 4 && <StepSkills {...stepProps} />}
-        {step === 5 && <StepFinalize {...stepProps} />}
+        {step === 5 && <StepEquipment {...stepProps} />}
+        {step === 6 && <StepFinalize {...stepProps} />}
       </div>
 
       {/* Next / Finish button — fixed above the bottom nav */}

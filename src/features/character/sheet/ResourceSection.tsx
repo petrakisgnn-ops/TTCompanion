@@ -7,7 +7,9 @@ interface ResourceSectionProps {
 
 function ResourceRow({ resource, charId }: { resource: ResourceTrack; charId: string }) {
   const { spendResource, restoreResource } = useCharacterStore();
-  const pips = Array.from({ length: resource.max });
+  // Large point pools (e.g. Paladin's Lay on Hands, up to 100 at level 20) render as a
+  // +/- stepper instead of one checkbox per point — a 100-pip grid isn't usable UI.
+  const isLargePool = resource.max > 20;
 
   return (
     <div className="py-2">
@@ -17,26 +19,46 @@ function ResourceRow({ resource, charId }: { resource: ResourceTrack; charId: st
           {resource.current}/{resource.max} · resets on {resource.resetOn === 'shortRest' ? 'short rest' : 'long rest'}
         </span>
       </div>
-      <div className="flex gap-1.5 flex-wrap">
-        {pips.map((_, i) => {
-          const filled = i < resource.current;
-          return (
-            <button
-              key={i}
-              onClick={() =>
-                filled
-                  ? spendResource(charId, resource.id)
-                  : restoreResource(charId, resource.id)
-              }
-              className={`w-7 h-7 rounded-md border-2 transition-colors ${
-                filled
-                  ? 'bg-amber-500 border-amber-500'
-                  : 'bg-transparent border-slate-600 hover:border-amber-600'
-              }`}
-            />
-          );
-        })}
-      </div>
+      {isLargePool ? (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => spendResource(charId, resource.id)}
+            disabled={resource.current <= 0}
+            className="w-9 h-9 rounded-lg bg-[var(--color-raised)] font-bold text-lg hover:bg-[var(--color-card-inner)] disabled:opacity-30 flex items-center justify-center"
+          >
+            −
+          </button>
+          <span className="text-lg font-bold w-14 text-center">{resource.current}</span>
+          <button
+            onClick={() => restoreResource(charId, resource.id)}
+            disabled={resource.current >= resource.max}
+            className="w-9 h-9 rounded-lg bg-[var(--color-raised)] font-bold text-lg hover:bg-[var(--color-card-inner)] disabled:opacity-30 flex items-center justify-center"
+          >
+            +
+          </button>
+        </div>
+      ) : (
+        <div className="flex gap-1.5 flex-wrap">
+          {Array.from({ length: resource.max }).map((_, i) => {
+            const filled = i < resource.current;
+            return (
+              <button
+                key={i}
+                onClick={() =>
+                  filled
+                    ? spendResource(charId, resource.id)
+                    : restoreResource(charId, resource.id)
+                }
+                className={`w-7 h-7 rounded-md border-2 transition-colors ${
+                  filled
+                    ? 'bg-amber-500 border-amber-500'
+                    : 'bg-transparent border-slate-600 hover:border-amber-600'
+                }`}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

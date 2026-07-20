@@ -2,6 +2,8 @@
 import type { WizardData } from './CharacterWizard';
 import { buildRaceOptions, type RaceOption, type RawRace, type RawSubrace } from '../../../domain/reference/races';
 import { renderEntries } from '../../../rendering';
+import { useSettingsStore } from '../../../stores/settingsStore';
+import { matchesEdition } from '../../../domain/rules/edition';
 
 interface StepRaceProps {
   data: WizardData;
@@ -9,6 +11,7 @@ interface StepRaceProps {
 }
 
 export function StepRace({ data, patch }: StepRaceProps) {
+  const { edition } = useSettingsStore();
   const [options, setOptions] = useState<RaceOption[]>([]);
   const [query, setQuery] = useState('');
 
@@ -28,11 +31,12 @@ export function StepRace({ data, patch }: StepRaceProps) {
   }, []);
 
   const filtered = useMemo(() => {
+    const inEdition = options.filter(o => matchesEdition(o.source, o.reprintedAs, edition));
     const q = query.toLowerCase();
     return q
-      ? options.filter(o => o.name.toLowerCase().includes(q) || o.raceName.toLowerCase().includes(q))
-      : options;
-  }, [options, query]);
+      ? inEdition.filter(o => o.name.toLowerCase().includes(q) || o.raceName.toLowerCase().includes(q))
+      : inEdition;
+  }, [options, query, edition]);
 
   const selectedKey = data.raceRef
     ? `${data.subraceRef?.name ?? data.raceRef.name}|${data.subraceRef?.source ?? data.raceRef.source}::${data.raceRef.name}|${data.raceRef.source}`
