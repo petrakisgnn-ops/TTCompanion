@@ -4,6 +4,7 @@ import { useRegisterSW } from 'virtual:pwa-register/react';
 import { DataProvider, useData } from './app/DataContext';
 import { LoadingScreen } from './app/LoadingScreen';
 import { AppShell } from './app/AppShell';
+import { useModeStore } from './stores/modeStore';
 
 // Compendium
 import { CompendiumPage }    from './features/compendium/CompendiumPage';
@@ -28,6 +29,16 @@ import { CharacterSheetPage } from './features/character/sheet/CharacterSheetPag
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { ToolsPage }     from './features/tools/ToolsPage';
 import { SettingsPage }  from './features/settings/SettingsPage';
+
+// DM mode
+import { DmHomePage }    from './features/dm/DmHomePage';
+import { NpcsPage }      from './features/dm/NpcsPage';
+import { NpcDetailPage } from './features/dm/NpcDetailPage';
+
+function HomeRouter() {
+  const { mode } = useModeStore();
+  return mode === 'dm' ? <DmHomePage /> : <DashboardPage />;
+}
 
 function UpdateToast() {
   const { needRefresh, updateServiceWorker } = useRegisterSW();
@@ -54,8 +65,8 @@ function AppRoutes() {
       <Route element={<AppShell />}>
         <Route index element={<Navigate to="/dashboard" replace />} />
 
-        {/* Home */}
-        <Route path="dashboard" element={<DashboardPage />} />
+        {/* Home — player dashboard or DM session view, depending on mode */}
+        <Route path="dashboard" element={<HomeRouter />} />
 
         {/* Compendium hub + sections */}
         <Route path="compendium" element={<CompendiumPage />} />
@@ -76,12 +87,16 @@ function AppRoutes() {
         <Route path="characters/new"   element={<CharacterWizard />} />
         <Route path="characters/:id"   element={<CharacterSheetPage />} />
 
+        {/* DM mode — NPCs / Settings */}
+        <Route path="npcs"           element={<NpcsPage />} />
+        <Route path="npcs/:npcId"    element={<NpcDetailPage />} />
+
         {/* Tools + Settings */}
         <Route path="tools"     element={<ToolsPage />} />
         <Route path="settings"  element={<SettingsPage />} />
 
         {/* Legacy DM route */}
-        <Route path="dm" element={<Navigate to="/tools" replace />} />
+        <Route path="dm" element={<Navigate to="/dashboard" replace />} />
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>

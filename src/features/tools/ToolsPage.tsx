@@ -1,8 +1,6 @@
 ﻿import { useEffect, useRef, useState } from 'react';
 import { useModeStore } from '../../stores/modeStore';
-import { InitiativeTracker } from '../dm/InitiativeTracker';
-import { EncounterBuilder } from '../dm/EncounterBuilder';
-import { PartyView } from '../dm/PartyView';
+import { generateName } from '../../domain/dm/nameGenerator';
 
 /* ── Dice Roller ─────────────────────────────────────────────────────────── */
 
@@ -205,18 +203,88 @@ function Timer() {
   );
 }
 
+/* ── Name Generator (standalone) ────────────────────────────────────────────
+ * Same generateName() the NPC quick-create form uses inline — one
+ * implementation, two entry points. ── */
+
+function NameGeneratorTool() {
+  const [race, setRace] = useState('Human');
+  const [name, setName] = useState(() => generateName('Human'));
+  const [history, setHistory] = useState<string[]>([]);
+
+  const roll = (r: string = race) => {
+    const next = generateName(r);
+    setName(next);
+    setHistory(h => [next, ...h.slice(0, 19)]);
+  };
+
+  return (
+    <div style={{ padding: '16px 14px 90px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
+        <span className="msym" style={{ fontSize: 26, color: '#d08c4a' }}>badge</span>
+        <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-.01em' }}>Name Generator</span>
+      </div>
+
+      <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 18, padding: 18, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {['Human', 'Elf', 'Dwarf', 'Halfling', 'Gnome', 'Half-Orc', 'Tiefling', 'Dragonborn', 'Goblin', 'Orc'].map(r => (
+            <button
+              key={r}
+              onClick={() => { setRace(r); roll(r); }}
+              style={{
+                padding: '7px 13px', borderRadius: 999, fontSize: 12.5, fontWeight: 600,
+                background: race === r ? '#b87333' : 'var(--color-card-inner)',
+                border: `1px solid ${race === r ? '#b87333' : 'var(--color-border)'}`,
+                color: race === r ? '#1a1206' : 'var(--color-text-2)',
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ textAlign: 'center', padding: '10px 0' }}>
+          <span style={{ fontSize: 30, fontWeight: 800, color: '#d08c4a', letterSpacing: '-.01em' }}>{name}</span>
+        </div>
+
+        <button
+          onClick={() => roll()}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9,
+            background: '#b87333', color: '#1a1206', fontWeight: 800,
+            fontSize: 16, padding: 15, borderRadius: 14, border: 'none', cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          <span className="msym" style={{ fontSize: 22 }}>casino</span>
+          Generate
+        </button>
+      </div>
+
+      {history.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {history.map((n, i) => (
+            <span key={i} style={{ fontSize: 12.5, padding: '5px 11px', borderRadius: 999, background: 'var(--color-card)', border: '1px solid var(--color-border)', color: 'var(--color-text-3)' }}>
+              {n}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── DM Tools ────────────────────────────────────────────────────────────── */
 
-type DmTab = 'initiative' | 'encounter' | 'party' | 'timer';
+type DmTab = 'names' | 'timer';
 
 function DmTools() {
-  const [tab, setTab] = useState<DmTab>('initiative');
+  const [tab, setTab] = useState<DmTab>('names');
 
   const dmTabs: { key: DmTab; label: string; icon: string }[] = [
-    { key: 'initiative', label: 'Initiative', icon: 'swords'      },
-    { key: 'encounter',  label: 'Encounter',  icon: 'groups'      },
-    { key: 'party',      label: 'Party',      icon: 'people'      },
-    { key: 'timer',      label: 'Timer',      icon: 'timer'       },
+    { key: 'names', label: 'Name Generator', icon: 'badge' },
+    { key: 'timer', label: 'Timer',          icon: 'timer' },
   ];
 
   return (
@@ -248,10 +316,8 @@ function DmTools() {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {tab === 'initiative' && <InitiativeTracker />}
-        {tab === 'encounter'  && <EncounterBuilder />}
-        {tab === 'party'      && <PartyView />}
-        {tab === 'timer'      && <div style={{ padding: '14px 14px 90px' }}><Timer /></div>}
+        {tab === 'names' && <NameGeneratorTool />}
+        {tab === 'timer' && <div style={{ padding: '14px 14px 90px' }}><Timer /></div>}
       </div>
     </div>
   );

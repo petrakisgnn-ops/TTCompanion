@@ -1,4 +1,5 @@
 ﻿import { useLocation, useNavigate } from 'react-router-dom';
+import { useModeStore } from '../stores/modeStore';
 
 interface NavTab {
   label: string;
@@ -8,17 +9,25 @@ interface NavTab {
   matchPaths?: string[];
 }
 
-const TABS: NavTab[] = [
+const PLAYER_TABS: NavTab[] = [
   { label: 'Home',       icon: 'home',          path: '/dashboard' },
   { label: 'Party',      icon: 'groups',        path: '/characters', matchPaths: ['/characters'] },
   { label: 'Compendium', icon: 'auto_stories',  path: '/compendium', matchPaths: ['/compendium', '/spells', '/bestiary', '/items'] },
   { label: 'Tools',      icon: 'casino',        path: '/tools' },
-  { label: 'Settings',   icon: 'settings',      path: '/settings' },
+];
+
+const DM_TABS: NavTab[] = [
+  { label: 'Home',       icon: 'home',          path: '/dashboard' },
+  { label: 'NPCs',       icon: 'groups',        path: '/npcs', matchPaths: ['/npcs'] },
+  { label: 'Compendium', icon: 'auto_stories',  path: '/compendium', matchPaths: ['/compendium', '/spells', '/bestiary', '/items'] },
+  { label: 'Tools',      icon: 'casino',        path: '/tools' },
 ];
 
 export function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { mode } = useModeStore();
+  const TABS = mode === 'dm' ? DM_TABS : PLAYER_TABS;
 
   const isActive = (tab: NavTab) => {
     const paths = [tab.path, ...(tab.matchPaths ?? [])];

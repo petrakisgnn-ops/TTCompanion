@@ -1,5 +1,5 @@
 ﻿import { useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { useCharacterStore } from '../stores/characterStore';
 import { useModeStore } from '../stores/modeStore';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -7,6 +7,7 @@ import { BottomNav } from './BottomNav';
 import { totalLevel } from '../domain/rules';
 
 function CharacterHeader() {
+  const navigate = useNavigate();
   const { characters, activeId } = useCharacterStore();
   const { mode, set } = useModeStore();
   const character = characters.find(c => c.id === activeId) ?? null;
@@ -64,6 +65,20 @@ function CharacterHeader() {
           </button>
         ))}
       </div>
+
+      {/* Settings */}
+      <button
+        onClick={() => navigate('/settings')}
+        aria-label="Settings"
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+          background: 'var(--color-card)', border: '1px solid var(--color-border)',
+          color: 'var(--color-muted)', cursor: 'pointer',
+        }}
+      >
+        <span className="msym" style={{ fontSize: 19 }}>settings</span>
+      </button>
     </header>
   );
 }

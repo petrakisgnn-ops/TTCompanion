@@ -1,4 +1,4 @@
-import type { AbilityScores } from '../character/types';
+import type { AbilityScores, Character } from '../character/types';
 export { maxSpellLevelForClass, maxSpellLevelForCharacter, LEVEL_LABEL } from './spellcasting';
 
 export const abilityMod = (score: number): number =>
@@ -18,6 +18,18 @@ export const passiveScore = (mod: number, profBonus: number, proficient: boolean
 
 export const totalLevel = (classes: { level: number }[]): number =>
   classes.reduce((sum, c) => sum + c.level, 0);
+
+/**
+ * AC has no dedicated field on Character — it lives as an optional override inside
+ * the player-configurable `combat-stats` widget (see widgets/CombatStatsWidget.tsx).
+ * Read that override if the widget is present, else fall back to the same
+ * `10 + dexMod` default the widget itself uses.
+ */
+export const characterAc = (character: Character): number => {
+  const widget = character.dashboard.widgets.find(w => w.type === 'combat-stats');
+  const override = (widget?.config as { acOverride?: number } | undefined)?.acOverride;
+  return override ?? 10 + abilityMod(character.abilityScores.dex);
+};
 
 export const allAbilityMods = (scores: AbilityScores) => ({
   str: abilityMod(scores.str),
