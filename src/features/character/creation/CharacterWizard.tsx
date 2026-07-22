@@ -2,8 +2,9 @@
 import { useNavigate } from 'react-router-dom';
 import type { AbilityScores, Character, Currency, InventoryItem } from '../../../domain/character/types';
 import type { RefId } from '../../../domain/reference/types';
-import { computeSpellSlots, maxHp } from '../../../domain/rules/spellSlots';
-import { computeClassResources } from '../../../domain/rules/classResources';
+import { maxHp } from '../../../domain/rules/spellSlots';
+import { recomputeAllResources } from '../../../domain/rules/resources';
+import { hpBonusPerLevel } from '../../../domain/rules/hpBonus';
 import { abilityMod } from '../../../domain/rules';
 import { getClassData, subclassLevel } from '../../../domain/rules/classData';
 import { CLASS_SKILLS } from '../../../domain/rules/classSkills';
@@ -146,8 +147,9 @@ export function CharacterWizard() {
       case 0: return data.raceRef !== null;
       case 1: {
         if (data.classRef === null) return false;
-        // Cleric/Sorcerer/Warlock must pick their subclass here — it's the only chance they get.
-        if (subclassLevel(data.classRef.name) === 1) return data.subclassRef !== null;
+        // A subclass is required whenever the creation level has already reached the
+        // class's subclass level (always true for Cleric/Sorcerer/Warlock at 1).
+        if (data.level >= subclassLevel(data.classRef.name)) return data.subclassRef !== null;
         return true;
       }
       case 2: return data.backgroundRef !== null;
@@ -191,21 +193,34 @@ export function CharacterWizard() {
       cha: abilityScores.cha + (abilityBonus.cha ?? 0),
     };
 
+    const finalSubclass = subclassRef && level >= subclassLevel(classRef.name) ? subclassRef : undefined;
+
     const cls = getClassData(classRef.name);
     const conMod = abilityMod(finalScores.con);
+    // Hill Dwarf / Draconic Bloodline grant +1 HP max per level (see hpBonusPerLevel).
+    const hpBonus = hpBonusPerLevel({
+      race: raceRef, subrace: subraceRef,
+      classes: [{ classRef, level, subclass: finalSubclass }],
+    } as Character) * level;
     const hp = cls
-      ? { max: maxHp(cls.hitDie, level, conMod), current: 0, temp: 0 }
-      : { max: 10, current: 0, temp: 0 };
+      ? { max: maxHp(cls.hitDie, level, conMod) + hpBonus, current: 0, temp: 0 }
+      : { max: 10 + hpBonus, current: 0, temp: 0 };
     hp.current = hp.max;
 
-    const resources = cls
-      ? [...computeSpellSlots(cls.spellcasting, level), ...computeClassResources(classRef.name, level, finalScores)]
-      : [];
+    // Same resource derivation the sheet uses from here on (slots incl. subclass
+    // casters like Eldritch Knight, class pools like Rage/Ki) — one code path.
+    const resources = recomputeAllResources(
+      [{ classRef, level, subclass: finalSubclass }],
+      [],
+      finalScores,
+    );
 
     const character: Character = {
       id: crypto.randomUUID(),
       name: name.trim(),
-      classes: [{ classRef, level, subclass: subclassRef ?? undefined }],
+      // finalSubclass drops a lingering pick if the level was lowered back below the
+      // class's subclass level after choosing one.
+      classes: [{ classRef, level, subclass: finalSubclass }],
       race: raceRef,
       subrace: subraceRef,
       background: backgroundRef,
@@ -222,10 +237,11 @@ export function CharacterWizard() {
       proficiencies: {
         skills,
         saves: cls?.saves ?? [],
-        weapons: [],
-        armor: [],
+        weapons: cls?.startingProficiency.weapons ?? [],
+        armor: cls?.startingProficiency.armor ?? [],
         tools,
         languages,
+        expertise: [],
       },
       hitDiceSpent: 0,
       deathSaves: { successes: 0, failures: 0 },
@@ -233,6 +249,7 @@ export function CharacterWizard() {
       conditions: [],
       knownSpells: [],
       preparedSpells: [],
+      optionalFeatures: [],
       inventory: resolvedInventory,
       feats: grantedFeats,
       resources,

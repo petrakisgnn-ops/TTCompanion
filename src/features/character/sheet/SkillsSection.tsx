@@ -36,23 +36,31 @@ interface SkillsSectionProps {
   profSkills: string[];
   profSaves: string[];
   totalLevel: number;
+  expertise?: string[];
+  /** Toggles Expertise on a proficient skill — omit to render skills as static. */
+  onToggleExpertise?: (skill: string) => void;
 }
 
 function modStr(n: number): string {
   return `${n >= 0 ? '+' : ''}${n}`;
 }
 
-function ProfDot({ proficient }: { proficient: boolean }) {
+function ProfDot({ proficient, expert }: { proficient: boolean; expert?: boolean }) {
+  // Expertise = a ring around the filled dot, to read as "double proficiency".
   return (
     <span
       className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${
-        proficient ? 'bg-amber-500' : 'border border-slate-600'
+        expert
+          ? 'bg-amber-500 ring-2 ring-offset-1 ring-offset-[var(--color-card)] ring-amber-400'
+          : proficient
+          ? 'bg-amber-500'
+          : 'border border-slate-600'
       }`}
     />
   );
 }
 
-export function SkillsSection({ scores, profSkills, profSaves, totalLevel }: SkillsSectionProps) {
+export function SkillsSection({ scores, profSkills, profSaves, totalLevel, expertise = [], onToggleExpertise }: SkillsSectionProps) {
   const pb = proficiencyBonus(totalLevel);
 
   return (
@@ -84,19 +92,39 @@ export function SkillsSection({ scores, profSkills, profSaves, totalLevel }: Ski
         <h3 className="text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wide mb-2">
           Skills
         </h3>
+        {onToggleExpertise && (
+          <p className="text-xs text-[var(--color-faint)] mb-2">Tap a proficient skill to toggle Expertise (doubles bonus).</p>
+        )}
         <div className="space-y-1">
           {SKILLS.map(({ name, ability }) => {
             const proficient = profSkills.includes(name);
-            const mod = abilityMod(scores[ability as keyof AbilityScores]) + (proficient ? pb : 0);
+            const expert = proficient && expertise.includes(name);
+            const mod = abilityMod(scores[ability as keyof AbilityScores]) + (proficient ? pb * (expert ? 2 : 1) : 0);
             const abilLabel = ability.toUpperCase().slice(0, 3);
-            return (
-              <div key={name} className="flex items-center gap-2 text-sm">
-                <ProfDot proficient={proficient} />
-                <span className="flex-1 text-[var(--color-text-2)]">{name}</span>
+            // Only proficient skills can gain Expertise; the tap target is inert otherwise.
+            const canToggle = onToggleExpertise && proficient;
+            const Row = (
+              <>
+                <ProfDot proficient={proficient} expert={expert} />
+                <span className="flex-1 text-[var(--color-text-2)] text-left">{name}</span>
                 <span className="text-[var(--color-disabled)] text-xs mr-1">{abilLabel}</span>
                 <span className={`font-mono font-semibold text-xs w-7 text-right ${proficient ? 'text-amber-400' : 'text-[var(--color-muted)]'}`}>
                   {modStr(mod)}
                 </span>
+              </>
+            );
+            return canToggle ? (
+              <button
+                key={name}
+                onClick={() => onToggleExpertise(name)}
+                className="w-full flex items-center gap-2 text-sm hover:bg-white/5 rounded-lg -mx-1 px-1 py-0.5"
+                title={expert ? 'Remove Expertise' : 'Add Expertise'}
+              >
+                {Row}
+              </button>
+            ) : (
+              <div key={name} className="flex items-center gap-2 text-sm px-1 py-0.5">
+                {Row}
               </div>
             );
           })}

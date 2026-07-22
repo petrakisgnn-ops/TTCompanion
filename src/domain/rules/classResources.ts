@@ -16,6 +16,7 @@ export const CLASS_RESOURCE_IDS: Record<string, string[]> = {
   Monk: ['ki'],
   Paladin: ['lay-on-hands', 'channel-divinity'],
   Sorcerer: ['sorcery-points'],
+  Wizard: ['arcane-recovery'],
 };
 
 // PHB Barbarian table, "Rages" column, levels 1–19. Level 20 is "Unlimited" — nothing to
@@ -79,6 +80,10 @@ export function computeClassResources(className: string, level: number, abilityS
       // Sorcery points = sorcerer level, from level 2. Long rest only — no short-rest recovery.
       const max = level >= 2 ? level : 0;
       return track('sorcery-points', 'Sorcery Points', max, 'longRest');
+    }
+    case 'Wizard': {
+      // Arcane Recovery: once per day (spent after a short rest to recover slots).
+      return track('arcane-recovery', 'Arcane Recovery', 1, 'longRest');
     }
     default:
       return [];

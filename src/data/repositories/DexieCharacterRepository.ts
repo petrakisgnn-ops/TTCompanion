@@ -1,11 +1,13 @@
 import { db } from '../db';
 import type { Character } from '../../domain/character/types';
 import type { CharacterRepository } from './CharacterRepository';
+import { recomputeAllResources } from '../../domain/rules/resources';
 
 // Fill in fields added after a character was created so old saves don't crash.
 function normalize(c: Character): Character {
-  return {
+  const withDefaults: Character = {
     ...c,
+    proficiencies: { ...c.proficiencies, expertise: c.proficiencies?.expertise ?? [] },
     hitDiceSpent: c.hitDiceSpent ?? 0,
     deathSaves: c.deathSaves ?? { successes: 0, failures: 0 },
     concentration: c.concentration ?? null,
@@ -13,10 +15,21 @@ function normalize(c: Character): Character {
     currency: c.currency ?? { pp: 0, gp: 0, ep: 0, sp: 0, cp: 0 },
     knownSpells: c.knownSpells ?? [],
     preparedSpells: c.preparedSpells ?? [],
+    optionalFeatures: c.optionalFeatures ?? [],
     feats: c.feats ?? [],
+    resources: c.resources ?? [],
     alignment: c.alignment ?? null,
     personality: c.personality ?? { trait: '', ideal: '', bond: '', flaw: '' },
     appearance: c.appearance ?? { age: '', height: '', weight: '', eyes: '', skin: '', hair: '' },
+  };
+
+  // Backfill class-derived resources added in a newer version (e.g. Arcane Recovery, or
+  // slots for a caster subclass) onto characters created before those existed. The merge
+  // preserves spent amounts and leaves non-class resources (innate spell trackers, etc.)
+  // untouched — see recomputeAllResources.
+  return {
+    ...withDefaults,
+    resources: recomputeAllResources(withDefaults.classes, withDefaults.resources, withDefaults.abilityScores),
   };
 }
 

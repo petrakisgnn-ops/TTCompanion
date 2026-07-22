@@ -2,12 +2,14 @@
 import { renderEntries } from '../../../rendering';
 import type { Entry } from '../../../domain/reference/types';
 import { useCharacterStore } from '../../../stores/characterStore';
-import type { Character } from '../../../domain/character/types';
+import type { Character, AbilityScores } from '../../../domain/character/types';
+import { parseFeatAbility, type FeatAbilityGrant } from '../../../domain/rules/featAbility';
 
 interface FeatEntry {
   name: string;
   source: string;
   prerequisite?: unknown[];
+  ability?: unknown;
   entries?: Entry[];
 }
 
@@ -35,7 +37,23 @@ export function FeatsTab({ character }: FeatsTabProps) {
   const [results, setResults] = useState<FeatEntry[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [showSearch, setShowSearch] = useState(false);
+  // A half-feat with a *choice* increase (e.g. Resilient) parks here until the
+  // player picks which ability; fixed-only half-feats apply immediately on add.
+  const [pendingChoice, setPendingChoice] = useState<{ feat: FeatEntry; grant: FeatAbilityGrant } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const finishAdd = (feat: FeatEntry, boosts?: Partial<AbilityScores>) => {
+    addFeat(character.id, { name: feat.name, source: feat.source }, boosts);
+    setPendingChoice(null);
+    setQuery('');
+    setResults([]);
+  };
+
+  const handlePick = (feat: FeatEntry) => {
+    const grant = parseFeatAbility(feat.ability);
+    if (grant?.choice) { setPendingChoice({ feat, grant }); return; }
+    finishAdd(feat, grant?.fixed);
+  };
 
   // Fetch feats.json once
   useEffect(() => {
@@ -105,11 +123,7 @@ export function FeatsTab({ character }: FeatsTabProps) {
                 return (
                   <button
                     key={`${feat.name}|${feat.source}`}
-                    onClick={() => {
-                      addFeat(character.id, { name: feat.name, source: feat.source });
-                      setQuery('');
-                      setResults([]);
-                    }}
+                    onClick={() => handlePick(feat)}
                     className="w-full flex items-start justify-between px-4 py-2.5 text-left hover:bg-white/5"
                   >
                     <div>
@@ -125,6 +139,43 @@ export function FeatsTab({ character }: FeatsTabProps) {
           {query.trim() && results.length === 0 && (
             <p className="text-xs text-[var(--color-disabled)] mt-2 text-center">No feats found</p>
           )}
+        </div>
+      )}
+
+      {/* Half-feat ability choice (Resilient, Fey Touched, ...) */}
+      {pendingChoice && (
+        <div className="bg-[var(--color-card)] rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold">{pendingChoice.feat.name}</p>
+            <button onClick={() => setPendingChoice(null)} className="text-xs text-[var(--color-faint)] hover:text-[var(--color-text)]">Cancel</button>
+          </div>
+          <p className="text-xs text-[var(--color-faint)]">
+            Choose an ability to increase by {pendingChoice.grant.choice!.amount}
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {pendingChoice.grant.choice!.from.map(key => {
+              const current = character.abilityScores[key];
+              const capped = current >= 20;
+              return (
+                <button
+                  key={key}
+                  disabled={capped}
+                  onClick={() => {
+                    const { fixed, choice } = pendingChoice.grant;
+                    finishAdd(pendingChoice.feat, { ...fixed, [key]: (fixed[key] ?? 0) + choice!.amount });
+                  }}
+                  className={`py-2.5 rounded-xl text-sm transition-colors ${
+                    capped
+                      ? 'bg-[var(--color-raised)]/30 text-[var(--color-disabled)]'
+                      : 'bg-[var(--color-raised)] hover:bg-[var(--color-card-inner)]'
+                  }`}
+                >
+                  {key.toUpperCase()}
+                  <span className="block text-xs opacity-70">{current} → {Math.min(20, current + pendingChoice.grant.choice!.amount)}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 

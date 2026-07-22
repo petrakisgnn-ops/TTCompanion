@@ -1,35 +1,48 @@
 import type { AbilityScores, ResourceTrack } from '../character/types';
 import type { RefId } from '../reference/types';
-import { getClassData, type ClassData } from './classData';
-import { computeSpellSlots, computeMulticlassSpellSlots } from './spellSlots';
+import { getClassData, getSubclassCaster, type ClassData } from './classData';
+import { computeSpellSlots, computeMulticlassSpellSlots, type EffectiveCasting } from './spellSlots';
 import { computeClassResources, CLASS_RESOURCE_IDS } from './classResources';
 
 const SPELL_SLOT_AND_PACT_IDS = [
   'slot-1', 'slot-2', 'slot-3', 'slot-4', 'slot-5', 'slot-6', 'slot-7', 'slot-8', 'slot-9', 'pact',
 ];
 
+/** A class's effective slot progression, counting a caster subclass (Eldritch Knight etc.) on a non-casting class. */
+function effectiveCasting(data: ClassData, subclass?: RefId): EffectiveCasting {
+  if (data.spellcasting !== 'none') return data.spellcasting;
+  return getSubclassCaster(subclass?.name)?.progression ?? 'none';
+}
+
 /**
- * Recomputes every resource this character's classes are entitled to — combined multiclass
- * spell slots, each Warlock's own separate Pact Magic, and each class's own non-spell resource
- * pool (Rage, Ki, ...) — and merges the result against the character's previous resources the
- * same top-up-preserving-spent-amount way a single class's recompute already did, generalized
- * across every class instead of just the one being leveled. A single-class character is just
- * the one-class case of this and computes identically to before this was generalized.
+ * Recomputes every resource this character's classes are entitled to — spell slots,
+ * each Warlock's own separate Pact Magic, and each class's own non-spell resource
+ * pool (Rage, Ki, ...) — and merges the result against the character's previous
+ * resources the same top-up-preserving-spent-amount way a single class's recompute
+ * already did.
+ *
+ * Slot routing: exactly one slot-contributing class → that class's OWN table
+ * (half/third casters round more generously there than the multiclass pool does);
+ * two or more → the shared PHB multiclass pool. Pact Magic always stays separate.
  */
 export function recomputeAllResources(
   classes: { classRef: RefId; level: number; subclass?: RefId }[],
   previousResources: ResourceTrack[],
   abilityScores: AbilityScores,
 ): ResourceTrack[] {
-  const resolved: { cl: typeof classes[number]; data: ClassData }[] = [];
+  const resolved: { cl: typeof classes[number]; data: ClassData; casting: EffectiveCasting }[] = [];
   for (const cl of classes) {
     const data = getClassData(cl.classRef.name);
-    if (data) resolved.push({ cl, data });
+    if (data) resolved.push({ cl, data, casting: effectiveCasting(data, cl.subclass) });
   }
 
-  const managed: ResourceTrack[] = [
-    ...computeMulticlassSpellSlots(resolved.map(({ cl, data }) => ({ classRef: cl.classRef, level: cl.level, spellcasting: data.spellcasting }))),
-  ];
+  const slotContributors = resolved.filter(r => r.casting !== 'none' && r.casting !== 'pact');
+  const managed: ResourceTrack[] =
+    slotContributors.length === 1
+      ? computeSpellSlots(slotContributors[0].casting, slotContributors[0].cl.level)
+      : computeMulticlassSpellSlots(
+          slotContributors.map(({ cl, casting }) => ({ classRef: cl.classRef, level: cl.level, spellcasting: casting })),
+        );
 
   const ownedIds = new Set(SPELL_SLOT_AND_PACT_IDS);
   for (const { cl, data } of resolved) {

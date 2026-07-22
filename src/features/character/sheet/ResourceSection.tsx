@@ -90,7 +90,7 @@ export function ResourceSection({ character }: ResourceSectionProps) {
       {other.length > 0 && (
         <div className="bg-[var(--color-card)] rounded-xl px-4 divide-y divide-[var(--color-border)]">
           <h3 className="text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wide py-2">
-            Class Resources
+            Other Resources
           </h3>
           {other.map(r => (
             <ResourceRow key={r.id} resource={r} charId={character.id} />

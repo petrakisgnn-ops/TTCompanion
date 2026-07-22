@@ -13,8 +13,8 @@ export const spellSaveDc = (abilityMod: number, profBonus: number): number =>
 export const spellAttackBonus = (abilityMod: number, profBonus: number): number =>
   abilityMod + profBonus;
 
-export const passiveScore = (mod: number, profBonus: number, proficient: boolean): number =>
-  10 + mod + (proficient ? profBonus : 0);
+export const passiveScore = (mod: number, profBonus: number, proficient: boolean, expertise = false): number =>
+  10 + mod + (proficient ? profBonus * (expertise ? 2 : 1) : 0);
 
 export const totalLevel = (classes: { level: number }[]): number =>
   classes.reduce((sum, c) => sum + c.level, 0);

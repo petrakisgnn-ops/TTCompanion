@@ -39,6 +39,12 @@ export interface ClassData {
   spellcastingAbility?: string;
   multiclassPrereq: AbilityPrereq;
   multiclassProficiency: MulticlassProficiencyGrant;
+  /** Armor/weapon proficiencies granted by taking this class FIRST (PHB class tables) — the reduced multiclass grant is `multiclassProficiency`. */
+  startingProficiency: { armor: string[]; weapons: string[] };
+  /** Known-cantrip count by level (index 0 = level 1). Absent for classes with no cantrips (Paladin, Ranger). */
+  cantripsKnown?: readonly number[];
+  /** Known-spell count by level (index 0 = level 1) — known casters only (Bard/Sorcerer/Warlock/Ranger). */
+  spellsKnownTable?: readonly number[];
 }
 
 export const CLASSES: readonly ClassData[] = [
@@ -46,71 +52,125 @@ export const CLASSES: readonly ClassData[] = [
     name: 'Artificer', source: 'TCE', hitDie: 8, saves: ['con', 'int'], spellcasting: 'artificer', spellcastingAbility: 'int',
     multiclassPrereq: { all: ['int'] },
     multiclassProficiency: { armor: ['Light armor'], weapons: [], tool: "Thieves' Tools or one artisan's tools" },
+    startingProficiency: { armor: ['Light armor', 'Medium armor', 'Shields'], weapons: ['Simple weapons'] },
+    cantripsKnown: [2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4],
   },
   {
     name: 'Barbarian', source: 'PHB', hitDie: 12, saves: ['str', 'con'], spellcasting: 'none',
     multiclassPrereq: { all: ['str'] },
     multiclassProficiency: { armor: ['Shields'], weapons: ['Simple weapons', 'Martial weapons'] },
+    startingProficiency: { armor: ['Light armor', 'Medium armor', 'Shields'], weapons: ['Simple weapons', 'Martial weapons'] },
   },
   {
     name: 'Bard', source: 'PHB', hitDie: 8, saves: ['dex', 'cha'], spellcasting: 'full', spellcastingAbility: 'cha',
     multiclassPrereq: { all: ['cha'] },
     multiclassProficiency: { armor: ['Light armor'], weapons: [], tool: 'One musical instrument', skillChoice: 1 },
+    startingProficiency: { armor: ['Light armor'], weapons: ['Simple weapons', 'Hand crossbows', 'Longswords', 'Rapiers', 'Shortswords'] },
+    cantripsKnown: [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    spellsKnownTable: [4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 15, 16, 18, 19, 19, 20, 22, 22, 22],
   },
   {
     name: 'Cleric', source: 'PHB', hitDie: 8, saves: ['wis', 'cha'], spellcasting: 'full', spellcastingAbility: 'wis',
     multiclassPrereq: { all: ['wis'] },
     multiclassProficiency: { armor: ['Light armor', 'Medium armor', 'Shields'], weapons: [] },
+    startingProficiency: { armor: ['Light armor', 'Medium armor', 'Shields'], weapons: ['Simple weapons'] },
+    cantripsKnown: [3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
   },
   {
     name: 'Druid', source: 'PHB', hitDie: 8, saves: ['int', 'wis'], spellcasting: 'full', spellcastingAbility: 'wis',
     multiclassPrereq: { all: ['wis'] },
     multiclassProficiency: { armor: ['Shields'], weapons: [] },
+    startingProficiency: { armor: ['Light armor', 'Medium armor', 'Shields (non-metal)'], weapons: ['Clubs', 'Daggers', 'Darts', 'Javelins', 'Maces', 'Quarterstaffs', 'Scimitars', 'Sickles', 'Slings', 'Spears'] },
+    cantripsKnown: [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
   },
   {
     name: 'Fighter', source: 'PHB', hitDie: 10, saves: ['str', 'con'], spellcasting: 'none',
     multiclassPrereq: { any: ['str', 'dex'] },
     multiclassProficiency: { armor: ['Light armor', 'Medium armor', 'Shields'], weapons: ['Simple weapons', 'Martial weapons'] },
+    startingProficiency: { armor: ['Light armor', 'Medium armor', 'Heavy armor', 'Shields'], weapons: ['Simple weapons', 'Martial weapons'] },
   },
   {
     name: 'Monk', source: 'PHB', hitDie: 8, saves: ['str', 'dex'], spellcasting: 'none',
     multiclassPrereq: { all: ['dex', 'wis'] },
     multiclassProficiency: { armor: [], weapons: ['Simple weapons', 'Shortswords'] },
+    startingProficiency: { armor: [], weapons: ['Simple weapons', 'Shortswords'] },
   },
   {
     name: 'Paladin', source: 'PHB', hitDie: 10, saves: ['wis', 'cha'], spellcasting: 'half', spellcastingAbility: 'cha',
     multiclassPrereq: { all: ['str', 'cha'] },
     multiclassProficiency: { armor: ['Light armor', 'Medium armor', 'Shields'], weapons: ['Simple weapons', 'Martial weapons'] },
+    startingProficiency: { armor: ['Light armor', 'Medium armor', 'Heavy armor', 'Shields'], weapons: ['Simple weapons', 'Martial weapons'] },
   },
   {
     name: 'Ranger', source: 'PHB', hitDie: 10, saves: ['str', 'dex'], spellcasting: 'half', spellcastingAbility: 'wis',
     multiclassPrereq: { all: ['dex', 'wis'] },
     multiclassProficiency: { armor: ['Light armor'], weapons: ['Simple weapons', 'Martial weapons'], skillChoice: 1 },
+    startingProficiency: { armor: ['Light armor', 'Medium armor', 'Shields'], weapons: ['Simple weapons', 'Martial weapons'] },
+    spellsKnownTable: [0, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11],
   },
   {
     name: 'Rogue', source: 'PHB', hitDie: 8, saves: ['dex', 'int'], spellcasting: 'none',
     multiclassPrereq: { all: ['dex'] },
     multiclassProficiency: { armor: ['Light armor'], weapons: [], tool: "Thieves' Tools", skillChoice: 1 },
+    startingProficiency: { armor: ['Light armor'], weapons: ['Simple weapons', 'Hand crossbows', 'Longswords', 'Rapiers', 'Shortswords'] },
   },
   {
     name: 'Sorcerer', source: 'PHB', hitDie: 6, saves: ['con', 'cha'], spellcasting: 'full', spellcastingAbility: 'cha',
     multiclassPrereq: { all: ['cha'] },
     multiclassProficiency: { armor: [], weapons: [] },
+    startingProficiency: { armor: [], weapons: ['Daggers', 'Darts', 'Slings', 'Quarterstaffs', 'Light crossbows'] },
+    cantripsKnown: [4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
+    spellsKnownTable: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 12, 13, 13, 14, 14, 15, 15, 15, 15],
   },
   {
     name: 'Warlock', source: 'PHB', hitDie: 8, saves: ['wis', 'cha'], spellcasting: 'pact', spellcastingAbility: 'cha',
     multiclassPrereq: { all: ['cha'] },
     multiclassProficiency: { armor: ['Light armor'], weapons: ['Simple weapons'] },
+    startingProficiency: { armor: ['Light armor'], weapons: ['Simple weapons'] },
+    cantripsKnown: [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    spellsKnownTable: [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15],
   },
   {
     name: 'Wizard', source: 'PHB', hitDie: 6, saves: ['int', 'wis'], spellcasting: 'full', spellcastingAbility: 'int',
     multiclassPrereq: { all: ['int'] },
     multiclassProficiency: { armor: [], weapons: [] },
+    startingProficiency: { armor: [], weapons: ['Daggers', 'Darts', 'Slings', 'Quarterstaffs', 'Light crossbows'] },
+    cantripsKnown: [3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
   },
 ] as const;
 
 export function getClassData(name: string): ClassData | undefined {
   return CLASSES.find(c => c.name.toLowerCase() === name.toLowerCase());
+}
+
+/**
+ * Subclasses that grant spellcasting to an otherwise non-casting class (PHB
+ * third-casters). Tables hardcoded from class-fighter/rogue.json subclass entries
+ * (index 0 = class level 1); their spell list is the Wizard list.
+ */
+export interface SubclassCasterData {
+  progression: '1/3';
+  ability: AbilityKey;
+  spellList: string;
+  cantripsKnown: readonly number[];
+  spellsKnownTable: readonly number[];
+}
+
+const SUBCLASS_CASTERS: Record<string, SubclassCasterData> = {
+  'Eldritch Knight': {
+    progression: '1/3', ability: 'int', spellList: 'Wizard',
+    cantripsKnown:    [0, 0, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    spellsKnownTable: [0, 0, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 11, 11, 12, 13],
+  },
+  'Arcane Trickster': {
+    progression: '1/3', ability: 'int', spellList: 'Wizard',
+    cantripsKnown:    [0, 0, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    spellsKnownTable: [0, 0, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9, 10, 10, 11, 11, 11, 12, 13],
+  },
+};
+
+export function getSubclassCaster(subclassName: string | undefined): SubclassCasterData | undefined {
+  return subclassName ? SUBCLASS_CASTERS[subclassName] : undefined;
 }
 
 // Levels at which each class gains an Ability Score Improvement (or Feat)
@@ -127,6 +187,7 @@ export function isAsiLevel(className: string, level: number): boolean {
 // Level at which the class picks a subclass
 const SUBCLASS_LEVEL: Record<string, number> = {
   Cleric: 1, Sorcerer: 1, Warlock: 1,
+  Wizard: 2, Druid: 2,
 };
 export function subclassLevel(className: string): number {
   return SUBCLASS_LEVEL[className] ?? 3;

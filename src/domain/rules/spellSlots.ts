@@ -73,6 +73,31 @@ const ARTIFICER: readonly number[][] = [
   [4, 3, 3, 3, 2],
 ];
 
+// Third-caster subclasses (Eldritch Knight, Arcane Trickster) — no slots before
+// class level 3, caps at 4th-level slots (PHB subclass tables)
+const THIRD: readonly number[][] = [
+  [0, 0, 0, 0],
+  [0, 0, 0, 0],
+  [2, 0, 0, 0],
+  [3, 0, 0, 0],
+  [3, 0, 0, 0],
+  [3, 0, 0, 0],
+  [4, 2, 0, 0],
+  [4, 2, 0, 0],
+  [4, 2, 0, 0],
+  [4, 3, 0, 0],
+  [4, 3, 0, 0],
+  [4, 3, 0, 0],
+  [4, 3, 2, 0],
+  [4, 3, 2, 0],
+  [4, 3, 2, 0],
+  [4, 3, 3, 0],
+  [4, 3, 3, 0],
+  [4, 3, 3, 0],
+  [4, 3, 3, 1],
+  [4, 3, 3, 1],
+];
+
 // Warlock pact slot count [level 1–20]
 const PACT_COUNT = [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4];
 // Warlock pact slot level [level 1–20]
@@ -93,7 +118,7 @@ function slotsToTracks(slots: readonly number[]): ResourceTrack[] {
 }
 
 export function computeSpellSlots(
-  type: SpellcastingType,
+  type: SpellcastingType | '1/3',
   level: number,
 ): ResourceTrack[] {
   const idx = Math.min(Math.max(level, 1), 20) - 1;
@@ -101,6 +126,7 @@ export function computeSpellSlots(
     case 'full':       return slotsToTracks(FULL[idx] ?? []);
     case 'half':       return slotsToTracks(HALF[idx] ?? []);
     case 'artificer':  return slotsToTracks(ARTIFICER[idx] ?? []);
+    case '1/3':        return slotsToTracks(THIRD[idx] ?? []);
     case 'pact': {
       const max = PACT_COUNT[idx] ?? 0;
       const slotLevel = PACT_LEVEL[idx] ?? 1;
@@ -112,22 +138,37 @@ export function computeSpellSlots(
   }
 }
 
+/** The effective slot progression of one class, counting a caster subclass (Eldritch Knight / Arcane Trickster) on an otherwise non-casting class. */
+export type EffectiveCasting = SpellcastingType | '1/3';
+
+export interface SlotContributor {
+  classRef: { name: string };
+  level: number;
+  spellcasting: EffectiveCasting;
+}
+
 /**
  * Multiclass spell slots (PHB p.164) are NOT the sum of each class's own table — every
  * spellcasting class contributes a "caster level" to one shared full-caster table: full
  * casters count their level in full, half-casters (Paladin/Ranger) count `floor(level/2)`,
- * Artificer counts `ceil(level/2)` (Tasha's errata — rounds the opposite way from the other
- * half-casters), Warlock's Pact Magic and non-casters contribute nothing (Pact Magic is always
- * tracked separately, never folded into this pool — see `computeSpellSlots('pact', ...)`).
+ * third-casters (Eldritch Knight / Arcane Trickster) count `floor(level/3)`, Artificer
+ * counts `ceil(level/2)` (Tasha's errata — rounds the opposite way from the other
+ * half-casters), Warlock's Pact Magic and non-casters contribute nothing (Pact Magic is
+ * always tracked separately, never folded into this pool).
+ *
+ * IMPORTANT: this multiclass pooling only applies with 2+ slot-contributing classes —
+ * a single-class caster uses their own class table, which rounds more generously for
+ * half/third casters (Paladin 5 has 4×1st+2×2nd; the pool math would give only 3×1st).
+ * Callers with one caster class should use `computeSpellSlots` directly — see
+ * `resources.ts`.
  */
-export function computeMulticlassSpellSlots(
-  classes: { classRef: { name: string }; level: number; spellcasting: SpellcastingType }[],
-): ResourceTrack[] {
+export function computeMulticlassSpellSlots(classes: SlotContributor[]): ResourceTrack[] {
   let combined = 0;
   for (const cl of classes) {
     switch (cl.spellcasting) {
       case 'full': combined += cl.level; break;
       case 'half': combined += Math.floor(cl.level / 2); break;
+      case '1/3': combined += Math.floor(cl.level / 3); break;
       case 'artificer': combined += Math.ceil(cl.level / 2); break;
       // 'pact' and 'none' contribute 0
     }

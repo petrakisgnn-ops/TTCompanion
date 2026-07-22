@@ -36,7 +36,7 @@ export function pcToCombatant(character: Character, meta: PcCombatMeta | undefin
     subtitle: `${character.race.name} · ${character.classes.map(c => `${c.classRef.name} ${c.level}`).join('/')}`,
     ac: characterAc(character),
     hp: { current: character.hp.current, max: character.hp.max },
-    passivePerception: passiveScore(wisMod, pb, proficient),
+    passivePerception: passiveScore(wisMod, pb, proficient, character.proficiencies.expertise?.includes('Perception') ?? false),
     conditions: character.conditions ?? [],
     initiative: meta?.initiative ?? null,
     disposition: null,

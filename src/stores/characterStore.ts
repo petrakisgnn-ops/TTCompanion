@@ -3,7 +3,8 @@ import { dexieCharacterRepository } from '../data/repositories/DexieCharacterRep
 import type { Character, Currency, ResourceTrack, AbilityScores, KnownSpellRef } from '../domain/character/types';
 import type { RefId } from '../domain/reference/types';
 import { recomputeAllResources } from '../domain/rules/resources';
-import { abilityMod } from '../domain/rules';
+import { applyAbilityBoosts } from '../domain/rules/abilityBoosts';
+import { totalLevel } from '../domain/rules';
 
 interface CharacterStore {
   characters: Character[];
@@ -56,8 +57,12 @@ interface CharacterStore {
   removePreparedSpell: (id: string, spell: RefId) => Promise<void>;
   addKnownSpell: (id: string, spell: KnownSpellRef) => Promise<void>;
   removeKnownSpell: (id: string, spell: KnownSpellRef) => Promise<void>;
-  addFeat: (id: string, feat: RefId) => Promise<void>;
+  /** `abilityBoosts` carries a half-feat's ability increase (fixed part + the player's choice, already merged by the caller). */
+  addFeat: (id: string, feat: RefId, abilityBoosts?: Partial<AbilityScores>) => Promise<void>;
   removeFeat: (id: string, feat: RefId) => Promise<void>;
+  addOptionalFeature: (id: string, feature: RefId) => Promise<void>;
+  removeOptionalFeature: (id: string, feature: RefId) => Promise<void>;
+  toggleExpertise: (id: string, skill: string) => Promise<void>;
 }
 
 export const useCharacterStore = create<CharacterStore>()((set, get) => ({
@@ -206,36 +211,20 @@ export const useCharacterStore = create<CharacterStore>()((set, get) => ({
           ? { ...cl, level: cl.level + 1, ...(subclass ? { subclass } : {}) }
           : cl,
       );
-      const newLevel = classes[classIndex].level;
 
-      // 2. HP
-      const hp = {
+      // 2. HP from the new level's hit die
+      const rolledHp = {
         ...c.hp,
         max: c.hp.max + hpGain,
         current: c.hp.current + hpGain,
       };
 
-      // 3. Ability scores (ASI)
-      const abilityScores = abilityBoosts
-        ? {
-            str: Math.min(20, c.abilityScores.str + (abilityBoosts.str ?? 0)),
-            dex: Math.min(20, c.abilityScores.dex + (abilityBoosts.dex ?? 0)),
-            con: Math.min(20, c.abilityScores.con + (abilityBoosts.con ?? 0)),
-            int: Math.min(20, c.abilityScores.int + (abilityBoosts.int ?? 0)),
-            wis: Math.min(20, c.abilityScores.wis + (abilityBoosts.wis ?? 0)),
-            cha: Math.min(20, c.abilityScores.cha + (abilityBoosts.cha ?? 0)),
-          }
-        : c.abilityScores;
-
-      // If CON went up, retroactively boost HP max by the level difference
-      const conDelta = (abilityBoosts?.con ?? 0);
-      const conModDelta = conDelta > 0
-        ? abilityMod(abilityScores.con) - abilityMod(c.abilityScores.con)
-        : 0;
-      if (conModDelta > 0) {
-        hp.max += conModDelta * newLevel;
-        hp.current += conModDelta * newLevel;
-      }
+      // 3. Ability scores (ASI) — CON-mod increases retroactively add HP per total
+      // character level (PHB p.173), shared logic with half-feat bonuses.
+      const boosted = abilityBoosts
+        ? applyAbilityBoosts(c.abilityScores, rolledHp, abilityBoosts, totalLevel(classes))
+        : { abilityScores: c.abilityScores, hp: rolledHp };
+      const { abilityScores, hp } = boosted;
 
       // 4. Recalculate spell slots (combined across all classes — see recomputeAllResources)
       // and every class's own resource pools (Rage, Ki, Channel Divinity, ...). Runs
@@ -385,10 +374,21 @@ export const useCharacterStore = create<CharacterStore>()((set, get) => ({
       ),
     })),
 
-  addFeat: (id, feat) =>
+  addFeat: (id, feat, abilityBoosts) =>
     get().mutate(id, c => {
       const already = c.feats.some(f => f.name === feat.name && f.source === feat.source);
-      return already ? c : { ...c, feats: [...c.feats, feat] };
+      if (already) return c;
+      const withFeat = { ...c, feats: [...c.feats, feat] };
+      if (!abilityBoosts || Object.keys(abilityBoosts).length === 0) return withFeat;
+      // Half-feat: apply its ability increase (CON retro-HP handled inside), then
+      // recompute resources since pools like Bardic Inspiration key off ability mods.
+      const boosted = applyAbilityBoosts(c.abilityScores, c.hp, abilityBoosts, totalLevel(c.classes));
+      return {
+        ...withFeat,
+        abilityScores: boosted.abilityScores,
+        hp: boosted.hp,
+        resources: recomputeAllResources(c.classes, c.resources, boosted.abilityScores),
+      };
     }),
 
   removeFeat: (id, feat) =>
@@ -396,4 +396,30 @@ export const useCharacterStore = create<CharacterStore>()((set, get) => ({
       ...c,
       feats: c.feats.filter(f => !(f.name === feat.name && f.source === feat.source)),
     })),
+
+  addOptionalFeature: (id, feature) =>
+    get().mutate(id, c => {
+      const already = c.optionalFeatures.some(f => f.name === feature.name && f.source === feature.source);
+      return already ? c : { ...c, optionalFeatures: [...c.optionalFeatures, feature] };
+    }),
+
+  removeOptionalFeature: (id, feature) =>
+    get().mutate(id, c => ({
+      ...c,
+      optionalFeatures: c.optionalFeatures.filter(f => !(f.name === feature.name && f.source === feature.source)),
+    })),
+
+  toggleExpertise: (id, skill) =>
+    get().mutate(id, c => {
+      const has = c.proficiencies.expertise.includes(skill);
+      return {
+        ...c,
+        proficiencies: {
+          ...c.proficiencies,
+          expertise: has
+            ? c.proficiencies.expertise.filter(s => s !== skill)
+            : [...c.proficiencies.expertise, skill],
+        },
+      };
+    }),
 }));

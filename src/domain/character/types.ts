@@ -89,9 +89,13 @@ export interface Character {
     armor: string[];
     tools: string[];
     languages: string[];
+    /** Skills with Expertise (Rogue/Bard) — proficiency bonus is doubled. Subset of `skills`. */
+    expertise: string[];
   };
   knownSpells: KnownSpellRef[];
   preparedSpells: RefId[];
+  /** Chosen class options — fighting styles, invocations, metamagic, maneuvers, ... (entries in optionalfeatures.json). */
+  optionalFeatures: RefId[];
   inventory: InventoryItem[];
   feats: RefId[];
   resources: ResourceTrack[];
