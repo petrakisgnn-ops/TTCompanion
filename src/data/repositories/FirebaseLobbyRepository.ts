@@ -60,6 +60,11 @@ export class FirebaseLobbyRepository implements LobbyRepository {
     return true;
   }
 
+  async updatePlayer(code: string, character: PlayerSnapshot): Promise<void> {
+    const uid = await ensureAuth();
+    await set(ref(db, `lobbies/${code}/players/${uid}/character`), character);
+  }
+
   async leaveLobby(code: string): Promise<void> {
     const uid = await ensureAuth();
     const playerRef = ref(db, `lobbies/${code}/players/${uid}`);

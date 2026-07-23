@@ -2,20 +2,7 @@ import { useState } from 'react';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useModeStore } from '../../stores/modeStore';
 import { useCharacterStore } from '../../stores/characterStore';
-import { characterAc, totalLevel } from '../../domain/rules';
-import type { Character } from '../../domain/character/types';
-import type { PlayerSnapshot } from '../../domain/session/types';
-
-function snapshotOf(c: Character): PlayerSnapshot {
-  return {
-    name: c.name,
-    race: c.subrace ? `${c.subrace.name} (${c.race.name})` : c.race.name,
-    classes: c.classes.map(cl => `${cl.classRef.name} ${cl.level}`).join(' / '),
-    level: totalLevel(c.classes),
-    hp: { current: c.hp.current, max: c.hp.max },
-    ac: characterAc(c),
-  };
-}
+import { snapshotOf } from '../../domain/session/snapshot';
 
 export function SessionPage() {
   const { mode } = useModeStore();

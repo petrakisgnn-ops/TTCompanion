@@ -1,5 +1,6 @@
 import type { Character } from '../character/types';
 import { abilityMod, characterAc, passiveScore, proficiencyBonus, totalLevel } from '../rules';
+import type { LobbyPlayer } from '../session/types';
 import type { DeployedInstance, Disposition, PcCombatMeta } from './types';
 
 /**
@@ -59,6 +60,29 @@ export function npcToCombatant(instance: DeployedInstance): CombatantView {
     disposition: instance.disposition,
     editable: true,
     dexMod: instance.dexMod,
+  };
+}
+
+/**
+ * A remote lobby player, projected into a roster row. Read-only: HP/AC are the snapshot the player
+ * reported when joining (they don't live-update from the player's device yet). `id` is namespaced
+ * with `lobby-` so it never collides with a local character id, and initiative reuses pcMeta.
+ */
+export function lobbyPlayerToCombatant(player: LobbyPlayer, meta: PcCombatMeta | undefined): CombatantView {
+  const snap = player.character;
+  return {
+    id: `lobby-${player.uid}`,
+    kind: 'pc',
+    name: snap?.name ?? player.name,
+    subtitle: snap ? `${snap.race} · ${snap.classes}` : 'Player (no character)',
+    ac: snap?.ac ?? 10,
+    hp: snap?.hp ?? { current: 0, max: 0 },
+    passivePerception: null,
+    conditions: [],
+    initiative: meta?.initiative ?? null,
+    disposition: null,
+    editable: false,
+    dexMod: 0,
   };
 }
 

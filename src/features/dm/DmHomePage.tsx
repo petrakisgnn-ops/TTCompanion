@@ -7,7 +7,8 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from '@dnd-kit/utilities';
 import { useCharacterStore } from '../../stores/characterStore';
 import { useSceneStore } from '../../stores/sceneStore';
-import { pcToCombatant, npcToCombatant, sortByInitiative } from '../../domain/dm/combatant';
+import { useSessionStore } from '../../stores/sessionStore';
+import { pcToCombatant, npcToCombatant, lobbyPlayerToCombatant, sortByInitiative } from '../../domain/dm/combatant';
 import type { CombatantView } from '../../domain/dm/combatant';
 import { UNASSIGNED_GROUP_ID } from '../../domain/dm/types';
 import { CONDITIONS } from '../../domain/rules/conditions';
@@ -58,9 +59,16 @@ export function DmHomePage() {
   useEffect(() => { if (!charsLoaded) loadChars(); }, [charsLoaded, loadChars]);
   useEffect(() => { if (!sceneLoaded) loadScene(); }, [sceneLoaded, loadScene]);
 
+  const { lobby, role } = useSessionStore();
+  // When hosting a lobby, the party = the remote players who joined; otherwise the local characters.
+  const hostingLobby = role === 'dm' && !!lobby;
+
   const pcViews = useMemo(
-    () => characters.map(c => pcToCombatant(c, scene.pcMeta[c.id])),
-    [characters, scene.pcMeta],
+    () =>
+      hostingLobby
+        ? lobby!.players.map(p => lobbyPlayerToCombatant(p, scene.pcMeta[`lobby-${p.uid}`]))
+        : characters.map(c => pcToCombatant(c, scene.pcMeta[c.id])),
+    [hostingLobby, lobby, characters, scene.pcMeta],
   );
   const npcViews = useMemo(() => scene.deployed.map(npcToCombatant), [scene.deployed]);
   const allViews = [...pcViews, ...npcViews];

@@ -40,6 +40,13 @@ export class MockLobbyRepository implements LobbyRepository {
     return Promise.resolve(true);
   }
 
+  updatePlayer(code: string, character: PlayerSnapshot): Promise<void> {
+    const l = lobbies.get(code);
+    const p = l?.players.find(pl => pl.uid === MY_UID);
+    if (p) { p.character = character; emit(code); }
+    return Promise.resolve();
+  }
+
   leaveLobby(code: string): Promise<void> {
     const l = lobbies.get(code);
     if (l) { l.players = l.players.filter(p => p.uid !== MY_UID); emit(code); }

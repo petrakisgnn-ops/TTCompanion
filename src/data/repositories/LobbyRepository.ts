@@ -14,6 +14,9 @@ export interface LobbyRepository {
   /** Player joins by code; resolves false if the lobby doesn't exist or is closed. */
   joinLobby(code: string, player: { name: string; character?: PlayerSnapshot }): Promise<boolean>;
 
+  /** Player pushes a fresh character snapshot to their slot (e.g. after taking damage), so the DM sees it live. */
+  updatePlayer(code: string, character: PlayerSnapshot): Promise<void>;
+
   /** The current device leaves the lobby (removes its player entry). */
   leaveLobby(code: string): Promise<void>;
 

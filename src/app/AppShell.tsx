@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useModeStore } from '../stores/modeStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { BottomNav } from './BottomNav';
+import { LobbySync } from '../features/session/LobbySync';
 import { getTheme, THEME_CLASSES } from './themes';
 
 function AppHeader() {
@@ -97,6 +98,7 @@ export function AppShell() {
       </main>
 
       <BottomNav />
+      <LobbySync />
     </div>
   );
 }

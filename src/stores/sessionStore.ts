@@ -14,6 +14,8 @@ interface SessionState {
 
   createLobby: (dmName: string) => Promise<void>;
   joinLobby: (code: string, name: string, character?: PlayerSnapshot) => Promise<void>;
+  /** Push an updated character snapshot to the lobby (no-op unless this device is a joined player). */
+  syncCharacter: (character: PlayerSnapshot) => Promise<void>;
   /** Player leaves the current lobby. */
   leave: () => Promise<void>;
   /** DM closes the current lobby. */
@@ -53,6 +55,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       set({ role: 'player', code, busy: false });
     } catch {
       set({ busy: false, error: 'Could not join the lobby. Check the code and your connection.' });
+    }
+  },
+
+  syncCharacter: async (character) => {
+    const { code, role } = get();
+    if (role !== 'player' || !code) return;
+    try {
+      await lobbyRepository.updatePlayer(code, character);
+    } catch {
+      // Transient write failure — the next HP change will retry.
     }
   },
 
