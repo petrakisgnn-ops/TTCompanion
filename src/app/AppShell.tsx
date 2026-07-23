@@ -46,6 +46,20 @@ function AppHeader() {
         ))}
       </div>
 
+      {/* Multiplayer session */}
+      <button
+        onClick={() => navigate('/session')}
+        aria-label="Session"
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+          background: 'var(--color-card)', border: '1px solid var(--color-border)',
+          color: 'var(--color-muted)', cursor: 'pointer',
+        }}
+      >
+        <span className="msym" style={{ fontSize: 19 }}>groups</span>
+      </button>
+
       {/* Settings */}
       <button
         onClick={() => navigate('/settings')}
