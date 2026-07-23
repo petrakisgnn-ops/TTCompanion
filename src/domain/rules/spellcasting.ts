@@ -115,6 +115,19 @@ export function maxKnownSpells(className: string, classLevel: number, subclassNa
   return getSubclassCaster(subclassName)?.spellsKnownTable[idx] ?? 0;
 }
 
+/**
+ * Whether a class (+ optional caster subclass) has any spell to pick at this level — a cantrip,
+ * or a known/prepared spell of level ≥ 1. False for non-casters and for half-casters below the
+ * level they gain spellcasting (Paladin/Ranger level 1). Used to decide whether the creation
+ * wizard shows a Spells step.
+ */
+export function classHasSpellChoices(className: string, classLevel: number, subclassName?: string): boolean {
+  if (maxKnownCantrips(className, classLevel, subclassName) > 0) return true;
+  if (maxSpellLevelForClass(className, classLevel, subclassName) < 1) return false;
+  if (isPreparedCaster(className)) return true;
+  return maxKnownSpells(className, classLevel, subclassName) > 0;
+}
+
 /** Max cantrips known at a given class level. Returns 0 for classes with no cantrips (Paladin, Ranger). */
 export function maxKnownCantrips(className: string, classLevel: number, subclassName?: string): number {
   const idx = Math.min(Math.max(classLevel, 1), 20) - 1;

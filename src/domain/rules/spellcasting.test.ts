@@ -1,5 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import { isKnownCaster, isPreparedCaster, maxKnownCantrips, maxKnownSpells, maxPreparedSpells, maxSpellLevelForClass } from './spellcasting';
+import { classHasSpellChoices, isKnownCaster, isPreparedCaster, maxKnownCantrips, maxKnownSpells, maxPreparedSpells, maxSpellLevelForClass } from './spellcasting';
+
+describe('classHasSpellChoices (whether the creation wizard shows a Spells step)', () => {
+  it('is false for non-casters at every level', () => {
+    for (const cls of ['Barbarian', 'Fighter', 'Monk', 'Rogue']) {
+      expect(classHasSpellChoices(cls, 20)).toBe(false);
+    }
+  });
+
+  it('is true from level 1 for classes with cantrips (Bard, Cleric, Wizard, Sorcerer, Warlock)', () => {
+    for (const cls of ['Bard', 'Cleric', 'Wizard', 'Sorcerer', 'Warlock']) {
+      expect(classHasSpellChoices(cls, 1)).toBe(true);
+    }
+  });
+
+  it('is false for half-casters at level 1 (no spellcasting yet) but true from level 2', () => {
+    expect(classHasSpellChoices('Paladin', 1)).toBe(false);
+    expect(classHasSpellChoices('Ranger', 1)).toBe(false);
+    expect(classHasSpellChoices('Paladin', 2)).toBe(true);
+    expect(classHasSpellChoices('Ranger', 2)).toBe(true);
+  });
+
+  it('follows a caster subclass — Eldritch Knight / Arcane Trickster from level 3', () => {
+    expect(classHasSpellChoices('Fighter', 2, 'Eldritch Knight')).toBe(false);
+    expect(classHasSpellChoices('Fighter', 3, 'Eldritch Knight')).toBe(true);
+    expect(classHasSpellChoices('Rogue', 3, 'Arcane Trickster')).toBe(true);
+  });
+});
 
 describe('isPreparedCaster', () => {
   it('is true for prepared casters, case-insensitively', () => {

@@ -33,6 +33,9 @@ interface ClassSpellBrowserProps {
   cantrips?: SpellActionBlock;
   /** Extra refs unioned into the 'class-list' pool — e.g. a Warlock patron's expanded spell list. */
   extraSpells?: RefId[];
+  /** When false, spell names are plain text instead of links to the detail page — used during
+   * character creation so tapping a spell doesn't navigate away and lose the wizard draft. */
+  linkToDetail?: boolean;
 }
 
 /**
@@ -42,7 +45,7 @@ interface ClassSpellBrowserProps {
  * "prepared" even for prepared casters, RAW-wise — always use the `cantrips` block's
  * own verb/cap, independent of `leveled`.
  */
-export function ClassSpellBrowser({ character, className, poolSource, leveled, cantrips, extraSpells }: ClassSpellBrowserProps) {
+export function ClassSpellBrowser({ character, className, poolSource, leveled, cantrips, extraSpells, linkToDetail = true }: ClassSpellBrowserProps) {
   const navigate = useNavigate();
   const { edition } = useSettingsStore();
   const [pool, setPool] = useState<StoredSpell[]>([]);
@@ -153,15 +156,24 @@ export function ClassSpellBrowser({ character, className, poolSource, leveled, c
 
                       return (
                         <div key={spell._key} className="flex items-center">
-                          <button
-                            onClick={() => navigate(`/spells/${encodeURIComponent(spell._key)}`)}
-                            className={`flex-1 flex items-center gap-2 px-4 py-2.5 text-left hover:bg-white/5 ${locked ? 'opacity-50' : ''}`}
-                          >
-                            <span className="text-sm">{spell.name}</span>
-                            <span className="ml-auto text-xs text-[var(--color-faint)] shrink-0">
-                              {SCHOOL_NAMES[spell.school] ?? spell.school}
-                            </span>
-                          </button>
+                          {linkToDetail ? (
+                            <button
+                              onClick={() => navigate(`/spells/${encodeURIComponent(spell._key)}`)}
+                              className={`flex-1 flex items-center gap-2 px-4 py-2.5 text-left hover:bg-white/5 ${locked ? 'opacity-50' : ''}`}
+                            >
+                              <span className="text-sm">{spell.name}</span>
+                              <span className="ml-auto text-xs text-[var(--color-faint)] shrink-0">
+                                {SCHOOL_NAMES[spell.school] ?? spell.school}
+                              </span>
+                            </button>
+                          ) : (
+                            <div className={`flex-1 flex items-center gap-2 px-4 py-2.5 ${locked ? 'opacity-50' : ''}`}>
+                              <span className="text-sm">{spell.name}</span>
+                              <span className="ml-auto text-xs text-[var(--color-faint)] shrink-0">
+                                {SCHOOL_NAMES[spell.school] ?? spell.school}
+                              </span>
+                            </div>
+                          )}
                           {!locked && (
                             <button
                               disabled={atCap}

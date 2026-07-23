@@ -1,12 +1,17 @@
-﻿import { useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { AbilityScores, Character, Currency, InventoryItem } from '../../../domain/character/types';
+import type { AbilityScores, Character, Currency, InventoryItem, KnownSpellRef } from '../../../domain/character/types';
 import type { RefId } from '../../../domain/reference/types';
 import { maxHp } from '../../../domain/rules/spellSlots';
 import { recomputeAllResources } from '../../../domain/rules/resources';
 import { hpBonusPerLevel } from '../../../domain/rules/hpBonus';
 import { abilityMod } from '../../../domain/rules';
-import { getClassData, subclassLevel } from '../../../domain/rules/classData';
+import { getClassData, subclassLevel, asiLevelsUpTo, type AbilityKey } from '../../../domain/rules/classData';
+import { classHasSpellChoices } from '../../../domain/rules/spellcasting';
+import {
+  parseFeatProficiencies, resolveFeatProficiencies,
+  EMPTY_FEAT_PROF_SELECTION, type FeatProfSelection, type RawFeat,
+} from '../../../domain/rules/featRewards';
 import { CLASS_SKILLS } from '../../../domain/rules/classSkills';
 import { useCharacterStore } from '../../../stores/characterStore';
 import { StepRace } from './StepRace';
@@ -14,10 +19,50 @@ import { StepClass } from './StepClass';
 import { StepAbilities } from './StepAbilities';
 import { StepBackground } from './StepBackground';
 import { StepSkills } from './StepSkills';
+import { StepSpells } from './StepSpells';
 import { StepEquipment } from './StepEquipment';
 import { StepFinalize } from './StepFinalize';
 
-const STEPS = ['Race', 'Class', 'Background', 'Abilities', 'Skills', 'Equipment', 'Finalize'];
+/** Wizard steps in order; "Spells" is inserted after "Skills" only for classes that can pick spells. */
+const BASE_STEPS = ['Race', 'Class', 'Background', 'Abilities', 'Skills', 'Equipment', 'Finalize'] as const;
+type StepName = (typeof BASE_STEPS)[number] | 'Spells';
+
+/**
+ * One Ability Score Improvement slot the character has already earned by being created above
+ * level 1 (levels 4, 8, … for its class — see asiLevelsUpTo). The player resolves each slot as
+ * a +2/+1+1 ability bump or a feat; `boosts` holds the resolved ability increases (a feat's
+ * fixed/half-feat increases included) so finalizing just sums them. See StepAbilities / AsiChoicesSection.
+ */
+export interface AsiChoice {
+  mode: '+2' | '+1+1' | 'feat';
+  one: AbilityKey | null;
+  two: (AbilityKey | null)[];
+  feat: RefId | null;
+  featAbility: AbilityKey | null;
+  /** Proficiency/expertise picks for a chosen feat's choice groups (Prodigy, Skilled, …). */
+  featProfSel: FeatProfSelection;
+  boosts: Partial<AbilityScores>;
+  complete: boolean;
+}
+
+export const BLANK_ASI_CHOICE: AsiChoice = {
+  mode: '+2', one: null, two: [null, null], feat: null, featAbility: null,
+  featProfSel: EMPTY_FEAT_PROF_SELECTION, boosts: {}, complete: false,
+};
+
+const ASI_ABILITY_KEYS: AbilityKey[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+
+/** Sums the resolved ability boosts across every ASI slot. */
+export function sumAsiBoosts(choices: AsiChoice[]): Partial<AbilityScores> {
+  const out: Partial<AbilityScores> = {};
+  for (const c of choices) {
+    for (const k of ASI_ABILITY_KEYS) {
+      const v = c.boosts[k];
+      if (v) out[k] = (out[k] ?? 0) + v;
+    }
+  }
+  return out;
+}
 
 export interface WizardData {
   raceRef: RefId | null;
@@ -31,11 +76,27 @@ export interface WizardData {
   abilityBonus: Partial<AbilityScores>;
   backgroundRef: RefId | null;
   skills: string[];
+  /** Skills chosen for a background's `skillProficiencies` choice grant (e.g. Cloistered Scholar). */
+  bgSkillChoices: string[];
+  /** Skills chosen for Expertise (Rogue/Bard) — a subset of `skills`. See StepSkills. */
+  expertise: string[];
   languages: string[];
   tools: string[];
   /** Bonus skill/feat granted by some race variants (e.g. Variant Human) — see StepSkills. */
   raceBonusSkill: string | null;
   raceBonusFeat: RefId | null;
+  /** Proficiency/expertise picks for the race bonus feat's choice groups, if it grants any. */
+  raceBonusFeatProfSel: FeatProfSelection;
+  /** Skills chosen for a race's `skillProficiencies` choice grant (e.g. Half-Elf's any-2). */
+  raceSkillChoices: string[];
+  /** ASI/feat choices earned by starting above level 1, one per slot — see AsiChoicesSection. */
+  asiChoices: AsiChoice[];
+  /** Class/subclass option-choices (Fighting Style, Invocations, Elemental Disciplines, …) — see ClassOptionsPicker. */
+  optionalFeatures: RefId[];
+  /** Spells learned (known casters + Wizard spellbook + cantrips) — see StepSpells. */
+  knownSpells: KnownSpellRef[];
+  /** Spells prepared (Cleric/Druid/Paladin/Artificer/Wizard) — see StepSpells. */
+  preparedSpells: RefId[];
   /** Resolved class/background starting equipment — see StepEquipment. */
   resolvedInventory: InventoryItem[];
   resolvedCurrency: Currency;
@@ -57,6 +118,22 @@ export interface WizardData {
 
 const BLANK_SCORES: AbilityScores = { str: 8, dex: 8, con: 8, int: 8, wis: 8, cha: 8 };
 const ZERO_CURRENCY: Currency = { pp: 0, gp: 0, ep: 0, sp: 0, cp: 0 };
+
+/**
+ * The character's real ability scores from the draft: base + racial/background bonus + earned
+ * ASI/feat boosts, capped at 20 for any ability an ASI touched. Shared by the finalize summary,
+ * the Spells step (spellcasting modifier), and character creation.
+ */
+export function resolveFinalScores(data: WizardData): AbilityScores {
+  const asiBoosts = data.classRef
+    ? sumAsiBoosts(data.asiChoices.slice(0, asiLevelsUpTo(data.classRef.name, data.level).length))
+    : {};
+  const f = (k: AbilityKey): number => {
+    const raw = data.abilityScores[k] + (data.abilityBonus[k] ?? 0) + (asiBoosts[k] ?? 0);
+    return asiBoosts[k] ? Math.min(20, raw) : raw;
+  };
+  return { str: f('str'), dex: f('dex'), con: f('con'), int: f('int'), wis: f('wis'), cha: f('cha') };
+}
 
 /**
  * Some backgrounds grant a feat outright (e.g. Strixhaven college backgrounds grant
@@ -104,6 +181,35 @@ async function resolveBackgroundFeats(backgroundRef: RefId): Promise<RefId[]> {
   }
 }
 
+/**
+ * Resolves the proficiency/expertise grants of every feat a new character gets (from its
+ * background, race variant, and ASI picks) — fixed grants plus the player's choices — into one
+ * merged, deduped set to fold into the character's proficiencies. Background feats carry no
+ * choice UI, so only their fixed grants apply (their choices, if any, would be spell-only).
+ */
+async function resolveFeatProfGrants(picks: { feat: RefId; sel: FeatProfSelection }[]): Promise<FeatProfSelection> {
+  const merged: FeatProfSelection = { skills: [], tools: [], languages: [], expertise: [] };
+  if (picks.length === 0) return merged;
+  try {
+    const json: { feat: RawFeat[] } = await fetch(`${import.meta.env.BASE_URL}data/feats.json`).then(r => r.json());
+    for (const { feat, sel } of picks) {
+      const raw = json.feat.find(f => f.name === feat.name && f.source === feat.source);
+      if (!raw) continue;
+      const r = resolveFeatProficiencies(parseFeatProficiencies(raw), sel);
+      merged.skills.push(...r.skills);
+      merged.tools.push(...r.tools);
+      merged.languages.push(...r.languages);
+      merged.expertise.push(...r.expertise);
+    }
+  } catch { /* leave whatever resolved so far */ }
+  return {
+    skills: [...new Set(merged.skills)],
+    tools: [...new Set(merged.tools)],
+    languages: [...new Set(merged.languages)],
+    expertise: [...new Set(merged.expertise)],
+  };
+}
+
 export function CharacterWizard() {
   const navigate = useNavigate();
   const createCharacter = useCharacterStore(s => s.create);
@@ -118,10 +224,18 @@ export function CharacterWizard() {
     abilityBonus: {},
     backgroundRef: null,
     skills: [],
+    bgSkillChoices: [],
+    expertise: [],
     languages: [],
     tools: [],
     raceBonusSkill: null,
     raceBonusFeat: null,
+    raceBonusFeatProfSel: EMPTY_FEAT_PROF_SELECTION,
+    raceSkillChoices: [],
+    asiChoices: [],
+    optionalFeatures: [],
+    knownSpells: [],
+    preparedSpells: [],
     resolvedInventory: [],
     resolvedCurrency: ZERO_CURRENCY,
     equipmentNotes: '',
@@ -142,56 +256,92 @@ export function CharacterWizard() {
   const patch = (partial: Partial<WizardData>) =>
     setData(d => ({ ...d, ...partial }));
 
+  // The subclass, only once the creation level has reached the level it's chosen at.
+  const activeSubclassName = data.classRef && data.subclassRef && data.level >= subclassLevel(data.classRef.name)
+    ? data.subclassRef.name
+    : undefined;
+  // Insert a Spells step (after Skills) only for classes that actually pick spells at this level.
+  const hasSpellsStep = data.classRef
+    ? classHasSpellChoices(data.classRef.name, data.level, activeSubclassName)
+    : false;
+  const steps = useMemo<StepName[]>(() => {
+    if (!hasSpellsStep) return [...BASE_STEPS];
+    const arr: StepName[] = [...BASE_STEPS];
+    arr.splice(arr.indexOf('Skills') + 1, 0, 'Spells');
+    return arr;
+  }, [hasSpellsStep]);
+  const stepName = steps[Math.min(step, steps.length - 1)];
+
   const canAdvance = (): boolean => {
-    switch (step) {
-      case 0: return data.raceRef !== null;
-      case 1: {
+    switch (stepName) {
+      case 'Race': return data.raceRef !== null;
+      case 'Class': {
         if (data.classRef === null) return false;
         // A subclass is required whenever the creation level has already reached the
         // class's subclass level (always true for Cleric/Sorcerer/Warlock at 1).
         if (data.level >= subclassLevel(data.classRef.name)) return data.subclassRef !== null;
         return true;
       }
-      case 2: return data.backgroundRef !== null;
-      case 3: return Object.values(data.abilityScores).every(v => v >= 1);
-      case 4: {
-        // Skills step: must have picked the required number of class skills
-        // (background skills are auto-granted so we just check we have at least the class count)
+      case 'Background': return data.backgroundRef !== null;
+      case 'Abilities': {
+        if (!Object.values(data.abilityScores).every(v => v >= 1)) return false;
+        // Every ASI/feat slot earned by the starting level must be resolved before continuing.
+        const slots = data.classRef ? asiLevelsUpTo(data.classRef.name, data.level).length : 0;
+        const chosen = data.asiChoices.slice(0, slots);
+        return chosen.length === slots && chosen.every(c => c.complete);
+      }
+      case 'Skills': {
+        // Must have picked the required number of class skills (background skills are auto-granted,
+        // so we just check we have at least the class count).
         const classChoice = data.classRef ? CLASS_SKILLS[data.classRef.name] : null;
         const required = classChoice?.count ?? 0;
-        // Count only class-picked skills (background skills were seeded in; we allow proceeding
-        // as background skills alone satisfy the step if class has 0 picks)
         return data.skills.length > 0 || required === 0;
       }
-      case 5: return true; // Equipment step: choices are optional, always advanceable
-      case 6: return data.name.trim().length > 0;
+      case 'Spells': return true; // spell picks are soft-capped — always advanceable
+      case 'Equipment': return true; // choices are optional
+      case 'Finalize': return data.name.trim().length > 0;
       default: return false;
     }
   };
 
   const handleFinish = async () => {
     const {
-      raceRef, subraceRef, classRef, subclassRef, level, abilityScores, abilityBonus, backgroundRef,
-      skills, languages, tools, raceBonusFeat,
+      raceRef, subraceRef, classRef, subclassRef, level, backgroundRef,
+      skills, expertise, languages, tools, raceBonusFeat, raceBonusFeatProfSel, asiChoices, optionalFeatures,
+      knownSpells, preparedSpells,
       resolvedInventory, resolvedCurrency, equipmentNotes,
       alignment, personalityTrait, personalityIdeal, personalityBond, personalityFlaw,
       age, height, weight, eyes, skin, hair, name,
     } = data;
     if (!raceRef || !classRef || !backgroundRef) return;
 
-    const backgroundFeats = await resolveBackgroundFeats(backgroundRef);
-    const grantedFeats = raceBonusFeat ? [...backgroundFeats, raceBonusFeat] : backgroundFeats;
+    // Only slots the starting level actually earns count (guards against stale entries left
+    // behind if the level was lowered after choices were made).
+    const asiSlotCount = asiLevelsUpTo(classRef.name, level).length;
+    const asiFeats = asiChoices.slice(0, asiSlotCount)
+      .filter(c => c.mode === 'feat' && c.feat)
+      .map(c => c.feat!);
 
-    // Bake the resolved race (5e) / background (5.5e) ability bonus into the final
-    // scores now — the character sheet just deals in real final scores from here on.
-    const finalScores: AbilityScores = {
-      str: abilityScores.str + (abilityBonus.str ?? 0),
-      dex: abilityScores.dex + (abilityBonus.dex ?? 0),
-      con: abilityScores.con + (abilityBonus.con ?? 0),
-      int: abilityScores.int + (abilityBonus.int ?? 0),
-      wis: abilityScores.wis + (abilityBonus.wis ?? 0),
-      cha: abilityScores.cha + (abilityBonus.cha ?? 0),
-    };
+    const backgroundFeats = await resolveBackgroundFeats(backgroundRef);
+    const grantedFeats = [
+      ...backgroundFeats,
+      ...(raceBonusFeat ? [raceBonusFeat] : []),
+      ...asiFeats,
+    ];
+
+    // Proficiency/expertise grants from every feat the character gets — background feats
+    // (fixed only), the race variant bonus feat, and ASI feats (each with the player's choices).
+    const featProfs = await resolveFeatProfGrants([
+      ...backgroundFeats.map(f => ({ feat: f, sel: EMPTY_FEAT_PROF_SELECTION })),
+      ...(raceBonusFeat ? [{ feat: raceBonusFeat, sel: raceBonusFeatProfSel }] : []),
+      ...asiChoices.slice(0, asiSlotCount)
+        .filter(c => c.mode === 'feat' && c.feat)
+        .map(c => ({ feat: c.feat!, sel: c.featProfSel })),
+    ]);
+    const mergedSkills = [...new Set([...skills, ...featProfs.skills])];
+
+    // Real final scores: base + racial/background bonus + earned ASI/feat boosts (capped at 20).
+    const finalScores = resolveFinalScores(data);
 
     const finalSubclass = subclassRef && level >= subclassLevel(classRef.name) ? subclassRef : undefined;
 
@@ -235,21 +385,22 @@ export function CharacterWizard() {
       abilityScores: finalScores,
       hp,
       proficiencies: {
-        skills,
+        skills: mergedSkills,
         saves: cls?.saves ?? [],
         weapons: cls?.startingProficiency.weapons ?? [],
         armor: cls?.startingProficiency.armor ?? [],
-        tools,
-        languages,
-        expertise: [],
+        tools: [...new Set([...tools, ...featProfs.tools])],
+        languages: [...new Set([...languages, ...featProfs.languages])],
+        // Expertise from picks + feats, kept to skills the character is actually proficient in.
+        expertise: [...new Set([...expertise, ...featProfs.expertise])].filter(s => mergedSkills.includes(s)),
       },
       hitDiceSpent: 0,
       deathSaves: { successes: 0, failures: 0 },
       concentration: null,
       conditions: [],
-      knownSpells: [],
-      preparedSpells: [],
-      optionalFeatures: [],
+      knownSpells,
+      preparedSpells,
+      optionalFeatures,
       inventory: resolvedInventory,
       feats: grantedFeats,
       resources,
@@ -275,12 +426,12 @@ export function CharacterWizard() {
           >
             ← {step === 0 ? 'Cancel' : 'Back'}
           </button>
-          <span className="text-sm font-semibold">{STEPS[step]}</span>
-          <span className="text-xs text-[var(--color-faint)]">{step + 1} / {STEPS.length}</span>
+          <span className="text-sm font-semibold">{stepName}</span>
+          <span className="text-xs text-[var(--color-faint)]">{step + 1} / {steps.length}</span>
         </div>
         {/* Progress dots */}
         <div className="flex gap-1.5 justify-center">
-          {STEPS.map((_, i) => (
+          {steps.map((_, i) => (
             <div
               key={i}
               className={`h-1.5 rounded-full transition-all ${
@@ -295,18 +446,19 @@ export function CharacterWizard() {
 
       {/* Step content — pb-24 keeps the last item above the fixed button */}
       <div className="pb-24">
-        {step === 0 && <StepRace {...stepProps} />}
-        {step === 1 && <StepClass {...stepProps} />}
-        {step === 2 && <StepBackground {...stepProps} />}
-        {step === 3 && <StepAbilities {...stepProps} />}
-        {step === 4 && <StepSkills {...stepProps} />}
-        {step === 5 && <StepEquipment {...stepProps} />}
-        {step === 6 && <StepFinalize {...stepProps} />}
+        {stepName === 'Race' && <StepRace {...stepProps} />}
+        {stepName === 'Class' && <StepClass {...stepProps} />}
+        {stepName === 'Background' && <StepBackground {...stepProps} />}
+        {stepName === 'Abilities' && <StepAbilities {...stepProps} />}
+        {stepName === 'Skills' && <StepSkills {...stepProps} />}
+        {stepName === 'Spells' && <StepSpells {...stepProps} />}
+        {stepName === 'Equipment' && <StepEquipment {...stepProps} />}
+        {stepName === 'Finalize' && <StepFinalize {...stepProps} />}
       </div>
 
       {/* Next / Finish button — fixed above the bottom nav */}
       <div className="fixed bottom-20 left-0 right-0 z-20 bg-[var(--color-app)]/95 backdrop-blur border-t border-[var(--color-border)] p-4">
-        {step < STEPS.length - 1 ? (
+        {step < steps.length - 1 ? (
           <button
             onClick={() => setStep(s => s + 1)}
             disabled={!canAdvance()}

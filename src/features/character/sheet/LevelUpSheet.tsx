@@ -6,12 +6,27 @@ import type { RefId } from '../../../domain/reference/types';
 import { getClassData, isAsiLevel, subclassLevel, type AbilityKey } from '../../../domain/rules/classData';
 import { matchesEdition } from '../../../domain/rules/edition';
 import { parseFeatAbility } from '../../../domain/rules/featAbility';
+import {
+  parseFeatProficiencies, featProfChoicesComplete, resolveFeatProficiencies,
+  EMPTY_FEAT_PROF_SELECTION, type FeatProfSelection,
+} from '../../../domain/rules/featRewards';
+import { FeatProficiencyPicker } from '../FeatProficiencyPicker';
 import { hpBonusPerLevel } from '../../../domain/rules/hpBonus';
 import { abilityMod, totalLevel } from '../../../domain/rules';
 
 interface RawSubclass { name: string; source: string; reprintedAs?: unknown }
 
-interface FeatEntry { name: string; source: string; prerequisite?: unknown[]; ability?: unknown }
+interface FeatEntry {
+  name: string;
+  source: string;
+  prerequisite?: unknown[];
+  ability?: unknown;
+  skillProficiencies?: unknown;
+  toolProficiencies?: unknown;
+  languageProficiencies?: unknown;
+  expertise?: unknown;
+  skillToolLanguageProficiencies?: unknown;
+}
 
 function featPrereqLabel(prerequisite: unknown[] | undefined): string | null {
   if (!prerequisite || prerequisite.length === 0) return null;
@@ -75,6 +90,7 @@ export function LevelUpSheet({ character, onClose }: LevelUpSheetProps) {
   const [allFeats, setAllFeats] = useState<FeatEntry[]>([]);
   const [chosenFeat, setChosenFeat] = useState<FeatEntry | null>(null);
   const [featAbilityPick, setFeatAbilityPick] = useState<AbilityKey | null>(null);
+  const [featProfSel, setFeatProfSel] = useState<FeatProfSelection>(EMPTY_FEAT_PROF_SELECTION);
   const [featQuery, setFeatQuery] = useState('');
   const [featResults, setFeatResults] = useState<FeatEntry[]>([]);
   const featTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -158,7 +174,11 @@ export function LevelUpSheet({ character, onClose }: LevelUpSheetProps) {
   // A half-feat's choice part (e.g. Resilient's pick-an-ability) must be resolved
   // before confirming; fixed-only half-feats and plain feats need nothing extra.
   const chosenFeatGrant = chosenFeat ? parseFeatAbility(chosenFeat.ability) : null;
-  const featComplete = chosenFeat !== null && (!chosenFeatGrant?.choice || featAbilityPick !== null);
+  const featProf = chosenFeat ? parseFeatProficiencies(chosenFeat) : null;
+  const featProfComplete = !featProf || featProfChoicesComplete(featProf, featProfSel);
+  const featComplete = chosenFeat !== null
+    && (!chosenFeatGrant?.choice || featAbilityPick !== null)
+    && featProfComplete;
   const asiComplete = !hasAsi || (asiMode === 'feat' ? featComplete : boosts !== undefined);
   const hpComplete = hpChoice === 'average' || (parseInt(rolledHp, 10) > 0);
   const subclassComplete = !picksSubclass || chosenSubclass !== null;
@@ -176,7 +196,8 @@ export function LevelUpSheet({ character, onClose }: LevelUpSheetProps) {
       if (chosenFeatGrant?.choice && featAbilityPick) {
         featBoosts[featAbilityPick] = (featBoosts[featAbilityPick] ?? 0) + chosenFeatGrant.choice.amount;
       }
-      await addFeat(character.id, { name: chosenFeat.name, source: chosenFeat.source }, featBoosts);
+      const profGrants = featProf ? resolveFeatProficiencies(featProf, featProfSel) : undefined;
+      await addFeat(character.id, { name: chosenFeat.name, source: chosenFeat.source }, featBoosts, profGrants);
     }
     onClose();
   };
@@ -278,7 +299,7 @@ export function LevelUpSheet({ character, onClose }: LevelUpSheetProps) {
               {(['+2', '+1+1', 'feat'] as const).map(m => (
                 <button
                   key={m}
-                  onClick={() => { setAsiMode(m); setBoostOne(null); setBoostA(null); setBoostB(null); setChosenFeat(null); setFeatAbilityPick(null); setFeatQuery(''); setFeatResults([]); }}
+                  onClick={() => { setAsiMode(m); setBoostOne(null); setBoostA(null); setBoostB(null); setChosenFeat(null); setFeatAbilityPick(null); setFeatProfSel(EMPTY_FEAT_PROF_SELECTION); setFeatQuery(''); setFeatResults([]); }}
                   className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
                     asiMode === m ? 'bg-amber-500 text-slate-900' : 'bg-[var(--color-raised)] text-[var(--color-text-2)] hover:bg-[var(--color-card-inner)]'
                   }`}
@@ -355,7 +376,7 @@ export function LevelUpSheet({ character, onClose }: LevelUpSheetProps) {
                     <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-amber-500/20 border border-amber-500/40">
                       <span className="text-sm font-medium">{chosenFeat.name}</span>
                       <button
-                        onClick={() => { setChosenFeat(null); setFeatAbilityPick(null); setFeatQuery(''); }}
+                        onClick={() => { setChosenFeat(null); setFeatAbilityPick(null); setFeatProfSel(EMPTY_FEAT_PROF_SELECTION); setFeatQuery(''); }}
                         className="text-xs text-[var(--color-faint)] hover:text-[var(--color-text)]"
                       >
                         Change
@@ -392,6 +413,18 @@ export function LevelUpSheet({ character, onClose }: LevelUpSheetProps) {
                         </div>
                       </>
                     )}
+                    {/* Feats that grant proficiency/expertise choices (Prodigy, Skilled, …) */}
+                    {featProf && featProf.choices.length > 0 && (
+                      <>
+                        <p className="text-xs text-[var(--color-faint)]">{chosenFeat.name} also grants proficiencies — choose:</p>
+                        <FeatProficiencyPicker
+                          proficiencies={featProf}
+                          proficientSkills={character.proficiencies.skills}
+                          value={featProfSel}
+                          onChange={setFeatProfSel}
+                        />
+                      </>
+                    )}
                   </>
                 ) : (
                   <>
@@ -410,7 +443,7 @@ export function LevelUpSheet({ character, onClose }: LevelUpSheetProps) {
                           return (
                             <button
                               key={`${feat.name}|${feat.source}`}
-                              onClick={() => setChosenFeat(feat)}
+                              onClick={() => { setChosenFeat(feat); setFeatProfSel(EMPTY_FEAT_PROF_SELECTION); }}
                               className="w-full flex items-start justify-between px-4 py-2.5 text-left hover:bg-white/5"
                             >
                               <div>

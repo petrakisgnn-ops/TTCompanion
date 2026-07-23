@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { abilityMod } from '../../../domain/rules';
-import { getClassData } from '../../../domain/rules/classData';
+import { getClassData, type AbilityKey } from '../../../domain/rules/classData';
+import { resolveFinalScores } from './CharacterWizard';
 import { maxHp } from '../../../domain/rules/spellSlots';
 import { parseCharacteristicTables, type CharacteristicTables } from '../../../domain/rules/characteristics';
 import { rollDice } from '../../../domain/rules/dice';
@@ -57,8 +58,10 @@ function CharacteristicRow({ label, value, onChange, options, onRoll }: Characte
 
 export function StepFinalize({ data, patch }: StepFinalizeProps) {
   const cls = data.classRef ? getClassData(data.classRef.name) : null;
-  const finalCon = data.abilityScores.con + (data.abilityBonus.con ?? 0);
-  const conMod = abilityMod(finalCon);
+  // Real final scores: base + racial/background bonus + earned ASI/feat boosts (capped at 20).
+  const finalScores = resolveFinalScores(data);
+  const finalScoreFor = (key: AbilityKey): number => finalScores[key];
+  const conMod = abilityMod(finalScores.con);
   const hp = cls ? maxHp(cls.hitDie, data.level, conMod) : null;
 
   const [tables, setTables] = useState<CharacteristicTables>(EMPTY_TABLES);
@@ -250,7 +253,7 @@ export function StepFinalize({ data, patch }: StepFinalizeProps) {
         {/* Ability scores mini-grid */}
         <div className="border-t border-[var(--color-border)] pt-3 grid grid-cols-6 text-center gap-1">
           {ABILITY_KEYS.map((key, i) => {
-            const score = data.abilityScores[key] + (data.abilityBonus[key] ?? 0);
+            const score = finalScoreFor(key);
             const mod = abilityMod(score);
             return (
               <div key={key}>

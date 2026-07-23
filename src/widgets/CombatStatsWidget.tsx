@@ -1,4 +1,5 @@
 import { abilityMod, proficiencyBonus, totalLevel } from '../domain/rules';
+import { useCharacterAc } from '../features/character/useCharacterAc';
 import { registerWidget } from './registry';
 import type { WidgetProps } from './registry';
 
@@ -15,7 +16,8 @@ function CombatStatsWidget({ instance, character }: WidgetProps) {
   };
   const level = totalLevel(character.classes);
   const pb = proficiencyBonus(level);
-  const ac = config.acOverride ?? (10 + mods.dex);
+  // Resolves worn armor + shield; honors this widget's own acOverride, else unarmored.
+  const ac = useCharacterAc(character);
   const initiative = mods.dex;
   const speed = config.speedFt ?? 30;
 

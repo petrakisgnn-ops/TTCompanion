@@ -5,6 +5,7 @@ import type { RefId } from '../domain/reference/types';
 import { recomputeAllResources } from '../domain/rules/resources';
 import { applyAbilityBoosts } from '../domain/rules/abilityBoosts';
 import { totalLevel } from '../domain/rules';
+import type { FeatProfSelection } from '../domain/rules/featRewards';
 
 interface CharacterStore {
   characters: Character[];
@@ -57,8 +58,10 @@ interface CharacterStore {
   removePreparedSpell: (id: string, spell: RefId) => Promise<void>;
   addKnownSpell: (id: string, spell: KnownSpellRef) => Promise<void>;
   removeKnownSpell: (id: string, spell: KnownSpellRef) => Promise<void>;
-  /** `abilityBoosts` carries a half-feat's ability increase (fixed part + the player's choice, already merged by the caller). */
-  addFeat: (id: string, feat: RefId, abilityBoosts?: Partial<AbilityScores>) => Promise<void>;
+  /** `abilityBoosts` carries a half-feat's ability increase (fixed part + the player's choice, already
+   * merged by the caller); `profGrants` carries the feat's resolved skill/tool/language/expertise
+   * proficiencies (fixed + chosen), which are merged into the character's proficiencies. */
+  addFeat: (id: string, feat: RefId, abilityBoosts?: Partial<AbilityScores>, profGrants?: FeatProfSelection) => Promise<void>;
   removeFeat: (id: string, feat: RefId) => Promise<void>;
   addOptionalFeature: (id: string, feature: RefId) => Promise<void>;
   removeOptionalFeature: (id: string, feature: RefId) => Promise<void>;
@@ -374,11 +377,19 @@ export const useCharacterStore = create<CharacterStore>()((set, get) => ({
       ),
     })),
 
-  addFeat: (id, feat, abilityBoosts) =>
+  addFeat: (id, feat, abilityBoosts, profGrants) =>
     get().mutate(id, c => {
       const already = c.feats.some(f => f.name === feat.name && f.source === feat.source);
       if (already) return c;
-      const withFeat = { ...c, feats: [...c.feats, feat] };
+      // Merge the feat's proficiency grants (fixed + chosen) into the character, deduped.
+      const proficiencies = profGrants ? {
+        ...c.proficiencies,
+        skills: [...new Set([...c.proficiencies.skills, ...profGrants.skills])],
+        tools: [...new Set([...c.proficiencies.tools, ...profGrants.tools])],
+        languages: [...new Set([...c.proficiencies.languages, ...profGrants.languages])],
+        expertise: [...new Set([...c.proficiencies.expertise, ...profGrants.expertise])],
+      } : c.proficiencies;
+      const withFeat = { ...c, feats: [...c.feats, feat], proficiencies };
       if (!abilityBoosts || Object.keys(abilityBoosts).length === 0) return withFeat;
       // Half-feat: apply its ability increase (CON retro-HP handled inside), then
       // recompute resources since pools like Bardic Inspiration key off ability mods.

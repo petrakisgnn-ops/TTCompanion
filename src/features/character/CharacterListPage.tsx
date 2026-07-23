@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCharacterStore } from '../../stores/characterStore';
 import type { Character } from '../../domain/character/types';
 import { abilityMod, totalLevel } from '../../domain/rules';
+import { useCharacterAc } from './useCharacterAc';
 
 function classLabel(c: Character): string {
   return c.classes.map(cl => `${cl.classRef.name} ${cl.level}`).join(' / ');
@@ -28,6 +29,8 @@ function CharacterCard({ character: c, onOpen, onDelete }: CharacterCardProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const pct = hpPct(c);
   const conMod = abilityMod(c.abilityScores.con);
+  // Armor class: resolved worn armor + shield, else override, else unarmored (incl. Barb/Monk).
+  const ac = useCharacterAc(c);
   const initial = c.name[0]?.toUpperCase() ?? '?';
 
   return (
@@ -72,6 +75,7 @@ function CharacterCard({ character: c, onOpen, onDelete }: CharacterCardProps) {
         {/* Quick stats */}
         <div style={{ marginTop: 9, display: 'flex', gap: 12 }}>
           {[
+            { label: 'AC', val: String(ac) },
             { label: 'CON', val: `${conMod >= 0 ? '+' : ''}${conMod}` },
             ...(c.resources.length > 0 ? [{ label: 'Resources', val: String(c.resources.length) }] : []),
             ...(c.knownSpells.length > 0 || c.preparedSpells.length > 0

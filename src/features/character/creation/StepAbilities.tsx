@@ -9,6 +9,7 @@ import {
 } from '../../../domain/rules/abilityBonus';
 import { rollAbilityScores, type AbilityRollResult } from '../../../domain/rules/abilityRoll';
 import type { AbilityScores } from '../../../domain/character/types';
+import { AsiChoicesSection } from './AsiChoicesSection';
 
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
 const ABILITY_KEYS = ['str', 'dex', 'con', 'int', 'wis', 'cha'] as const;
@@ -476,6 +477,11 @@ export function StepAbilities({ data, patch }: StepAbilitiesProps) {
             );
           })}
         </div>
+      )}
+
+      {/* Ability Score Improvements / feats earned by starting above level 1 */}
+      {data.classRef && (
+        <AsiChoicesSection className={data.classRef.name} level={data.level} data={data} patch={patch} />
       )}
     </div>
   );

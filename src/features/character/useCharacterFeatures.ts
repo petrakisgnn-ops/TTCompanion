@@ -1,27 +1,15 @@
 import { useEffect, useState } from 'react';
 import { extractFeatures, type FeatureEntry } from '../../domain/reference/features';
+import {
+  classFeaturesUpTo, subclassFeaturesUpTo,
+  type RawClassFeature, type RawSubclassFeature,
+} from '../../domain/reference/classFeatures';
 import { buildRaceOptions, type RawRace, type RawSubrace } from '../../domain/reference/races';
 import type { Character } from '../../domain/character/types';
 
 interface BgEntry {
   name: string;
   source: string;
-  entries?: FeatureEntry['entries'];
-}
-
-interface RawClassFeature {
-  name: string;
-  className: string;
-  classSource?: string;
-  level: number;
-  entries?: FeatureEntry['entries'];
-}
-
-interface RawSubclassFeature {
-  name: string;
-  subclassShortName: string;
-  subclassSource: string;
-  level: number;
   entries?: FeatureEntry['entries'];
 }
 
@@ -85,13 +73,12 @@ export function useCharacterFeatures(character: Character): FeatureGroup[] {
             subclassFeature?: RawSubclassFeature[];
           } = await res.json();
 
-          const classFeats = (json.classFeature ?? [])
-            .filter(f =>
-              f.className === cl.classRef.name &&
-              (!f.classSource || f.classSource === cl.classRef.source) &&
-              f.level <= cl.level,
-            )
-            .map((f): FeatureRow => ({ title: f.name, entries: f.entries ?? [], level: f.level, badge: `Lvl ${f.level}` }));
+          const toRow = (f: { name: string; level: number; entries: FeatureRow['entries'] }): FeatureRow =>
+            ({ title: f.name, entries: f.entries, level: f.level, badge: `Lvl ${f.level}` });
+
+          const classFeats = classFeaturesUpTo(
+            json.classFeature, cl.classRef.name, cl.classRef.source, cl.level,
+          ).map(toRow);
 
           let subclassFeats: FeatureRow[] = [];
           if (cl.subclass) {
@@ -99,13 +86,9 @@ export function useCharacterFeatures(character: Character): FeatureGroup[] {
               s => s.name === cl.subclass!.name && s.source === cl.subclass!.source,
             );
             if (sub) {
-              subclassFeats = (json.subclassFeature ?? [])
-                .filter(f =>
-                  f.subclassShortName === sub.shortName &&
-                  f.subclassSource === sub.source &&
-                  f.level <= cl.level,
-                )
-                .map((f): FeatureRow => ({ title: f.name, entries: f.entries ?? [], level: f.level, badge: `Lvl ${f.level}` }));
+              subclassFeats = subclassFeaturesUpTo(
+                json.subclassFeature, sub.shortName, sub.source, cl.level,
+              ).map(toRow);
             }
           }
 

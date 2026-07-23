@@ -43,6 +43,7 @@ export function CompendiumPage() {
     { icon: 'diamond',       label: 'Items',        path: '/items',       count: counts.items       ?? null },
     { icon: 'person',        label: 'Races',        path: '/races',       count: counts.races       ?? null },
     { icon: 'school',        label: 'Classes',      path: '/classes',     count: counts.classes     ?? null },
+    { icon: 'account_tree',  label: 'Subclasses',   path: '/subclasses',  count: null },
     { icon: 'psychology',    label: 'Backgrounds',  path: '/backgrounds', count: counts.backgrounds ?? null },
     { icon: 'military_tech', label: 'Feats',        path: '/feats',       count: counts.feats       ?? null },
     { icon: 'sick',          label: 'Conditions',   path: '/conditions',  count: counts.conditions  ?? null },

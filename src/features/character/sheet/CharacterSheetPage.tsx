@@ -1,15 +1,15 @@
-﻿import { useEffect, useState, type ReactNode } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCharacterStore } from '../../../stores/characterStore';
 import { abilityMod, proficiencyBonus, spellSaveDc, passiveScore, totalLevel as calcTotalLevel } from '../../../domain/rules';
+import { useCharacterAc } from '../useCharacterAc';
 import { getClassData, getSubclassCaster } from '../../../domain/rules/classData';
 import { HpTracker } from './HpTracker';
 import { AbilityGrid } from './AbilityGrid';
 import { SkillsSection } from './SkillsSection';
 import { ResourceSection } from './ResourceSection';
 import { KnownSpellsTab } from './KnownSpellsTab';
-import { ClassSpellBrowser, type SpellActionBlock } from './ClassSpellBrowser';
-import { isPreparedCaster, isKnownCaster, maxPreparedSpells, maxKnownSpells, maxKnownCantrips } from '../../../domain/rules/spellcasting';
+import { SpellSelection } from '../SpellSelection';
 import { FeatsTab } from './FeatsTab';
 import { FeaturesTab } from './FeaturesTab';
 import { LanguagesSection } from './LanguagesSection';
@@ -48,6 +48,7 @@ export function CharacterSheetPage() {
   const character = characters.find(c => c.id === id);
 
   useGrantedSpellSync(character);
+  const resolvedAc = useCharacterAc(character);
 
   // Subclass "expanded spell list" refs (a Warlock patron's spells, ...) per class —
   // unioned into that class's Learn/Prepare browser pool below.
@@ -134,71 +135,20 @@ export function CharacterSheetPage() {
     .map(cl => `${cl.classRef.name} ${cl.level}`)
     .join(' / ');
 
-  // One Learn/Prepare browser stack per casting class (labeled when multiclass) —
-  // caps use each class's own level and casting ability, incl. subclass casters.
-  const spellBrowsers: ReactNode[] = [];
-  const multiclass = character.classes.length > 1;
-  for (const cl of character.classes) {
-    const cdata = getClassData(cl.classRef.name);
-    if (!cdata) continue;
-    const cname = cdata.name;
-    const subclassName = cl.subclass?.name;
-    const subCaster = getSubclassCaster(subclassName);
-    const classLevel = cl.level;
-    const abilityKey = (cdata.spellcastingAbility ?? subCaster?.ability) as keyof typeof mods | undefined;
-    const classSpellMod = abilityKey ? mods[abilityKey] : 0;
-
-    const cantripCap = maxKnownCantrips(cname, classLevel, subclassName);
-    const cantrips: SpellActionBlock | undefined = cantripCap > 0
-      ? { verb: 'Learn', cap: cantripCap, onAdd: s => addKnownSpell(character.id, s), onRemove: s => removeKnownSpell(character.id, s) }
-      : undefined;
-
-    const classBrowsers: ReactNode[] = [];
-    if (isPreparedCaster(cname)) {
-      const prepare: SpellActionBlock = {
-        verb: 'Prepare', cap: maxPreparedSpells(cname, classLevel, classSpellMod),
-        onAdd: s => addPreparedSpell(character.id, s), onRemove: s => removePreparedSpell(character.id, s),
-      };
-      if (cname.toLowerCase() === 'wizard') {
-        // Wizard prepares from their own spellbook, not the full class list — so they
-        // also get a "Learn" step (spellbook growth) sourced from the class list first.
-        const learn: SpellActionBlock = {
-          verb: 'Learn', cap: maxKnownSpells(cname, classLevel),
-          onAdd: s => addKnownSpell(character.id, s), onRemove: s => removeKnownSpell(character.id, s),
-        };
-        classBrowsers.push(
-          <ClassSpellBrowser key={`${cname}-learn`} character={character} className={cname} poolSource="class-list" leveled={learn} cantrips={cantrips} extraSpells={expandedByClass[cname]} />,
-          <ClassSpellBrowser key={`${cname}-prepare`} character={character} className={cname} poolSource="known-spells" leveled={prepare} />,
-        );
-      } else {
-        classBrowsers.push(
-          <ClassSpellBrowser key={`${cname}-prepare`} character={character} className={cname} poolSource="class-list" leveled={prepare} cantrips={cantrips} extraSpells={expandedByClass[cname]} />,
-        );
-      }
-    } else if (isKnownCaster(cname, subclassName)) {
-      // Subclass casters (Eldritch Knight / Arcane Trickster) learn from another
-      // class's list — the Wizard list — with their own subclass known/cantrip caps.
-      const pool = subCaster?.spellList ?? cname;
-      const learn: SpellActionBlock = {
-        verb: 'Learn', cap: maxKnownSpells(cname, classLevel, subclassName),
-        onAdd: s => addKnownSpell(character.id, s), onRemove: s => removeKnownSpell(character.id, s),
-      };
-      classBrowsers.push(
-        <ClassSpellBrowser key={`${cname}-learn`} character={character} className={pool} poolSource="class-list" leveled={learn} cantrips={cantrips} extraSpells={expandedByClass[cname]} />,
-      );
-    }
-
-    if (classBrowsers.length > 0) {
-      spellBrowsers.push(
-        <div key={cname} className="space-y-4">
-          {multiclass && (
-            <h3 className="text-sm font-bold text-amber-400">{cname}{subCaster ? ` (${subclassName})` : ''}</h3>
-          )}
-          {classBrowsers}
-        </div>,
-      );
-    }
-  }
+  // The Learn/Prepare browser stack — shared with the creation wizard's Spells step so both
+  // surface identical per-class choices; here the actions write through the character store.
+  const spellBrowsers = (
+    <SpellSelection
+      character={character}
+      expandedByClass={expandedByClass}
+      actions={{
+        addKnown: s => addKnownSpell(character.id, s),
+        removeKnown: s => removeKnownSpell(character.id, s),
+        addPrepared: s => addPreparedSpell(character.id, s),
+        removePrepared: s => removePreparedSpell(character.id, s),
+      }}
+    />
+  );
 
   const handleSaveNotes = () => {
     mutate(character.id, c => ({ ...c, notes: notesVal }));
@@ -296,12 +246,13 @@ export function CharacterSheetPage() {
             {/* Combat quick-stats */}
             <div className="grid grid-cols-4 gap-2">
               {[
+                { label: 'AC', value: String(resolvedAc) },
                 { label: 'Proficiency', value: `+${pb}` },
                 { label: 'Initiative', value: `${mods.dex >= 0 ? '+' : ''}${mods.dex}` },
                 { label: 'Speed', value: `${walkSpeed} ft` },
                 ...(saveDc !== null ? [{ label: 'Spell DC', value: String(saveDc) }] : []),
                 ...(attackBonus !== null ? [{ label: 'Spell Atk', value: `+${attackBonus}` }] : []),
-              ].slice(0, 4).map(stat => (
+              ].map(stat => (
                 <div key={stat.label} className="bg-[var(--color-card)] rounded-xl p-2.5 text-center">
                   <div className="text-lg font-bold">{stat.value}</div>
                   <div className="text-xs text-[var(--color-faint)] mt-0.5 leading-tight">{stat.label}</div>

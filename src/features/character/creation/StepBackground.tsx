@@ -59,7 +59,8 @@ export function StepBackground({ data, patch }: StepBackgroundProps) {
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 space-y-2">
+      {/* Sticky below the wizard's progress header (~57px tall) so search stays reachable in long lists */}
+      <div className="sticky top-[57px] z-[9] bg-[var(--color-app)] border-b border-[var(--color-border)] px-4 py-3 space-y-2">
         <h2 className="text-base font-semibold">Choose a Background</h2>
         <input
           type="search"
@@ -73,37 +74,39 @@ export function StepBackground({ data, patch }: StepBackgroundProps) {
       <div className="divide-y divide-[var(--color-border)]">
         {filtered.map(bg => {
           const key = `${bg.name}|${bg.source}`;
-          const selected = selectedKey === key;
+          const isSelected = selectedKey === key;
           const skills = skillSummary(bg);
           return (
-            <button
-              key={key}
-              onClick={() => patch({ backgroundRef: { name: bg.name, source: bg.source } })}
-              className={`w-full flex items-center justify-between px-4 py-3 text-left min-h-[3rem] transition-colors ${
-                selected
-                  ? 'bg-amber-500/10 border-l-2 border-amber-500'
-                  : 'hover:bg-white/5 active:bg-white/10'
-              }`}
-            >
-              <div>
-                <p className={`font-medium text-sm ${selected ? 'text-amber-400' : ''}`}>
-                  {bg.name}
-                </p>
-                {skills && (
-                  <p className="text-xs text-[var(--color-faint)]">{skills}</p>
-                )}
-              </div>
-              <span className="text-xs text-[var(--color-faint)] ml-2 shrink-0">{bg.source}</span>
-            </button>
+            <div key={key}>
+              <button
+                onClick={() => patch({ backgroundRef: { name: bg.name, source: bg.source } })}
+                className={`w-full flex items-center justify-between px-4 py-3 text-left min-h-[3rem] transition-colors ${
+                  isSelected
+                    ? 'bg-amber-500/10 border-l-2 border-amber-500'
+                    : 'hover:bg-white/5 active:bg-white/10'
+                }`}
+              >
+                <div>
+                  <p className={`font-medium text-sm ${isSelected ? 'text-amber-400' : ''}`}>
+                    {bg.name}
+                  </p>
+                  {skills && (
+                    <p className="text-xs text-[var(--color-faint)]">{skills}</p>
+                  )}
+                </div>
+                <span className="text-xs text-[var(--color-faint)] ml-2 shrink-0">{bg.source}</span>
+              </button>
+
+              {/* Preview rendered directly under the selected row so it's obvious it belongs to it */}
+              {isSelected && selected?.entries && selected.entries.length > 0 && (
+                <div className="mx-4 my-3 p-3 bg-[var(--color-card)] rounded-xl text-sm leading-relaxed text-[var(--color-text-2)] space-y-1">
+                  {renderEntries(selected.entries)}
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
-
-      {selected && selected.entries && selected.entries.length > 0 && (
-        <div className="mx-4 mt-3 p-3 bg-[var(--color-card)] rounded-xl text-sm leading-relaxed text-[var(--color-text-2)] space-y-1">
-          {renderEntries(selected.entries)}
-        </div>
-      )}
     </div>
   );
 }

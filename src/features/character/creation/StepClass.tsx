@@ -71,83 +71,87 @@ export function StepClass({ data, patch }: StepClassProps) {
         <h2 className="text-base font-semibold">Choose a Class</h2>
       </div>
 
-      {/* Level picker (shown when a class is selected) */}
-      {data.classRef && (
-        <div className="mx-4 mb-3 bg-[var(--color-card)] rounded-xl p-3 flex items-center justify-between">
-          <span className="text-sm font-medium text-amber-400">{data.classRef.name} — Level</span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => patch({ level: Math.max(1, data.level - 1) })}
-              className="w-9 h-9 rounded-lg bg-[var(--color-raised)] text-lg font-bold hover:bg-[var(--color-card-inner)] flex items-center justify-center"
-            >
-              −
-            </button>
-            <span className="w-8 text-center font-bold text-lg">{data.level}</span>
-            <button
-              onClick={() => patch({ level: Math.min(20, data.level + 1) })}
-              className="w-9 h-9 rounded-lg bg-[var(--color-raised)] text-lg font-bold hover:bg-[var(--color-card-inner)] flex items-center justify-center"
-            >
-              +
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Subclass picker — only classes that pick at level 1 */}
-      {needsSubclassNow && (
-        <div className="mx-4 mb-3 bg-[var(--color-card)] rounded-xl p-3 space-y-2">
-          <p className="text-xs text-[var(--color-faint)] uppercase tracking-wide font-semibold">
-            {data.classRef!.name} chooses its subclass at level {subclassLevel(data.classRef!.name)}
-          </p>
-          {subclasses.length === 0 ? (
-            <p className="text-sm text-[var(--color-faint)] italic">Loading subclasses…</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {subclasses.map(sub => {
-                const picked = data.subclassRef?.name === sub.name && data.subclassRef?.source === sub.source;
-                return (
-                  <button
-                    key={`${sub.name}|${sub.source}`}
-                    onClick={() => patch({ subclassRef: sub })}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
-                      picked
-                        ? 'bg-amber-500 text-slate-900'
-                        : 'bg-[var(--color-raised)] text-[var(--color-text-2)] hover:bg-[var(--color-card-inner)]'
-                    }`}
-                  >
-                    {sub.name}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
       <div className="divide-y divide-[var(--color-border)]">
         {CLASSES.map(cls => {
           const key = `${cls.name}|${cls.source}`;
           const selected = selectedKey === key;
           return (
-            <button
-              key={key}
-              onClick={() => chooseClass(cls)}
-              className={`w-full flex items-center justify-between px-4 py-3 text-left min-h-[3rem] transition-colors ${
-                selected
-                  ? 'bg-amber-500/10 border-l-2 border-amber-500'
-                  : 'hover:bg-white/5 active:bg-white/10'
-              }`}
-            >
-              <div>
-                <p className={`font-medium text-sm ${selected ? 'text-amber-400' : ''}`}>
-                  {cls.name}
-                </p>
-                <p className="text-xs text-[var(--color-faint)]">
-                  d{cls.hitDie} · {SPELLCASTING_LABEL[cls.spellcasting]}
-                </p>
-              </div>
-              <span className="text-xs text-[var(--color-faint)] ml-2 shrink-0">{cls.source}</span>
-            </button>
+            <div key={key}>
+              <button
+                onClick={() => chooseClass(cls)}
+                className={`w-full flex items-center justify-between px-4 py-3 text-left min-h-[3rem] transition-colors ${
+                  selected
+                    ? 'bg-amber-500/10 border-l-2 border-amber-500'
+                    : 'hover:bg-white/5 active:bg-white/10'
+                }`}
+              >
+                <div>
+                  <p className={`font-medium text-sm ${selected ? 'text-amber-400' : ''}`}>
+                    {cls.name}
+                  </p>
+                  <p className="text-xs text-[var(--color-faint)]">
+                    d{cls.hitDie} · {SPELLCASTING_LABEL[cls.spellcasting]}
+                  </p>
+                </div>
+                <span className="text-xs text-[var(--color-faint)] ml-2 shrink-0">{cls.source}</span>
+              </button>
+
+              {/* Level + subclass controls render directly under the selected class */}
+              {selected && (
+                <div className="mx-4 my-3 space-y-3">
+                  {/* Level picker */}
+                  <div className="bg-[var(--color-card)] rounded-xl p-3 flex items-center justify-between">
+                    <span className="text-sm font-medium text-amber-400">{cls.name} — Level</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => patch({ level: Math.max(1, data.level - 1) })}
+                        className="w-9 h-9 rounded-lg bg-[var(--color-raised)] text-lg font-bold hover:bg-[var(--color-card-inner)] flex items-center justify-center"
+                      >
+                        −
+                      </button>
+                      <span className="w-8 text-center font-bold text-lg">{data.level}</span>
+                      <button
+                        onClick={() => patch({ level: Math.min(20, data.level + 1) })}
+                        className="w-9 h-9 rounded-lg bg-[var(--color-raised)] text-lg font-bold hover:bg-[var(--color-card-inner)] flex items-center justify-center"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Subclass picker — only when the creation level has reached the subclass level */}
+                  {needsSubclassNow && (
+                    <div className="bg-[var(--color-card)] rounded-xl p-3 space-y-2">
+                      <p className="text-xs text-[var(--color-faint)] uppercase tracking-wide font-semibold">
+                        {cls.name} chooses its subclass at level {subclassLevel(cls.name)}
+                      </p>
+                      {subclasses.length === 0 ? (
+                        <p className="text-sm text-[var(--color-faint)] italic">Loading subclasses…</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {subclasses.map(sub => {
+                            const picked = data.subclassRef?.name === sub.name && data.subclassRef?.source === sub.source;
+                            return (
+                              <button
+                                key={`${sub.name}|${sub.source}`}
+                                onClick={() => patch({ subclassRef: sub })}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                                  picked
+                                    ? 'bg-amber-500 text-slate-900'
+                                    : 'bg-[var(--color-raised)] text-[var(--color-text-2)] hover:bg-[var(--color-card-inner)]'
+                                }`}
+                              >
+                                {sub.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           );
         })}
       </div>

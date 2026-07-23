@@ -16,6 +16,7 @@ import { ItemListPage }      from './features/compendium/ItemListPage';
 import { ItemDetailPage }    from './features/compendium/ItemDetailPage';
 import { RacesPage }         from './features/compendium/RacesPage';
 import { ClassesPage }       from './features/compendium/ClassesPage';
+import { SubclassesPage }    from './features/compendium/SubclassesPage';
 import { BackgroundsPage }   from './features/compendium/BackgroundsPage';
 import { FeatsPage }         from './features/compendium/FeatsPage';
 import { ConditionsPage }    from './features/compendium/ConditionsPage';
@@ -78,6 +79,7 @@ function AppRoutes() {
         <Route path="items/:key"       element={<ItemDetailPage />} />
         <Route path="races"            element={<RacesPage />} />
         <Route path="classes"          element={<ClassesPage />} />
+        <Route path="subclasses"       element={<SubclassesPage />} />
         <Route path="backgrounds"      element={<BackgroundsPage />} />
         <Route path="feats"            element={<FeatsPage />} />
         <Route path="conditions"       element={<ConditionsPage />} />

@@ -2,8 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { CLASS_SKILLS, ALL_SKILLS } from '../../../domain/rules/classSkills';
 import { ALL_LANGUAGES, parseLanguageGrant, mergeLanguageGrants, type LanguageGrant } from '../../../domain/rules/languages';
 import { ALL_TOOLS, parseToolGrant, type ToolGrant } from '../../../domain/rules/tools';
+import { parseSkillGrant, type SkillGrant } from '../../../domain/rules/skillGrants';
+import { expertiseCount } from '../../../domain/rules/expertise';
+import { parseFeatProficiencies, EMPTY_FEAT_PROF_SELECTION } from '../../../domain/rules/featRewards';
 import { buildRaceOptions, type RawRace, type RawSubrace } from '../../../domain/reference/races';
 import { parseBonusSkillAndFeatGrant } from '../../../domain/rules/raceGrants';
+import { ClassOptionsPicker } from './ClassOptionsPicker';
+import { FeatProficiencyPicker } from '../FeatProficiencyPicker';
 import type { WizardData } from './CharacterWizard';
 
 interface StepSkillsProps {
@@ -22,18 +27,27 @@ interface BgJson {
 }
 
 interface RaceJson {
-  race: Array<{ name: string; source: string; languageProficiencies?: unknown }>;
+  race: Array<{ name: string; source: string; languageProficiencies?: unknown; skillProficiencies?: unknown }>;
 }
+
+const EMPTY_SKILL_GRANT: SkillGrant = { fixed: [], choiceCount: 0, choiceFrom: [] };
 
 interface FeatEntry {
   name: string;
   source: string;
+  skillProficiencies?: unknown;
+  toolProficiencies?: unknown;
+  languageProficiencies?: unknown;
+  expertise?: unknown;
+  skillToolLanguageProficiencies?: unknown;
 }
 
 export function StepSkills({ data, patch }: StepSkillsProps) {
   const [bgSkills, setBgSkills] = useState<string[]>([]);
+  const [bgSkillGrant, setBgSkillGrant] = useState<SkillGrant>(EMPTY_SKILL_GRANT);
   const [bgLangGrant, setBgLangGrant] = useState<LanguageGrant>({ fixed: [], choiceCount: 0 });
   const [raceLangGrant, setRaceLangGrant] = useState<LanguageGrant>({ fixed: [], choiceCount: 0 });
+  const [raceSkillGrant, setRaceSkillGrant] = useState<SkillGrant>(EMPTY_SKILL_GRANT);
   const [toolGrant, setToolGrant] = useState<ToolGrant>({ fixed: [], choiceCount: 0 });
 
   // Race/subrace bonus skill + feat (e.g. Variant Human) — shape-detected, see raceGrants.ts
@@ -61,31 +75,32 @@ export function StepSkills({ data, patch }: StepSkillsProps) {
         const bg = json.background.find(
           b => b.name === data.backgroundRef!.name && b.source === data.backgroundRef!.source,
         );
-        if (bg?.skillProficiencies?.[0]) {
-          const skills = Object.entries(bg.skillProficiencies[0])
-            .filter(([, v]) => v === true)
-            .map(([k]) => k.charAt(0).toUpperCase() + k.slice(1));
-          setBgSkills(skills);
-          // Seed already-picked if none chosen yet
-          if (data.skills.length === 0) {
-            patch({ skills: skills });
-          }
+        // Parse the full skill grant — fixed proficiencies AND any "choose N" (e.g. Cloistered
+        // Scholar grants History + one of Arcana/Nature/Religion). parseSkillGrant also maps
+        // multi-word keys to proper display names ("animal handling" → "Animal Handling").
+        const skillGrant = parseSkillGrant(bg?.skillProficiencies);
+        setBgSkills(skillGrant.fixed);
+        setBgSkillGrant(skillGrant);
+        // Seed the fixed background skills if the player hasn't started picking yet.
+        if (data.skills.length === 0 && skillGrant.fixed.length > 0) {
+          patch({ skills: skillGrant.fixed });
         }
         setBgLangGrant(parseLanguageGrant(bg?.languageProficiencies));
         setToolGrant(parseToolGrant(bg?.toolProficiencies));
       });
   }, [data.backgroundRef?.name]);
 
-  // Fetch race languages once the race is selected
+  // Fetch race languages + skill proficiencies once the race is selected
   useEffect(() => {
-    if (!data.raceRef) return;
+    if (!data.raceRef) { setRaceLangGrant({ fixed: [], choiceCount: 0 }); setRaceSkillGrant(EMPTY_SKILL_GRANT); return; }
     fetch(`${import.meta.env.BASE_URL}data/races.json`)
       .then(r => r.json())
       .then((json: RaceJson) => {
         const race = json.race.find(r => r.name === data.raceRef!.name && r.source === data.raceRef!.source);
         setRaceLangGrant(parseLanguageGrant(race?.languageProficiencies));
+        setRaceSkillGrant(parseSkillGrant(race?.skillProficiencies));
       });
-  }, [data.raceRef?.name]);
+  }, [data.raceRef?.name, data.raceRef?.source]);
 
   // Race/subrace bonus skill + feat (e.g. Variant Human) — detected by trait shape, not name
   useEffect(() => {
@@ -137,17 +152,78 @@ export function StepSkills({ data, patch }: StepSkillsProps) {
     if (missing.length > 0) patch({ tools: [...data.tools, ...missing] });
   }, [toolGrant.fixed.join('|')]);
 
+  // Seed fixed race skill proficiencies (e.g. Elf → Perception) once the race resolves
+  useEffect(() => {
+    if (raceSkillGrant.fixed.length === 0) return;
+    const missing = raceSkillGrant.fixed.filter(s => !data.skills.includes(s));
+    if (missing.length > 0) patch({ skills: [...data.skills, ...missing] });
+  }, [raceSkillGrant.fixed.join('|')]);
+
+  // Drop any Expertise pick whose underlying skill proficiency was later removed.
+  useEffect(() => {
+    const valid = data.expertise.filter(s => data.skills.includes(s));
+    if (valid.length !== data.expertise.length) patch({ expertise: valid });
+  }, [data.skills.join('|')]);
+
+  // Skills granted outside the class pick (background, race fixed/choice, race bonus) — locked
+  // in the class list and excluded from the class-skill count so they never consume a class slot.
+  const grantedElsewhere = (skill: string): boolean =>
+    bgSkills.includes(skill) ||
+    data.bgSkillChoices.includes(skill) ||
+    raceSkillGrant.fixed.includes(skill) ||
+    data.raceSkillChoices.includes(skill) ||
+    skill === data.raceBonusSkill;
+
   const toggleSkill = (skill: string) => {
-    if (bgSkills.includes(skill) || skill === data.raceBonusSkill) return; // locked elsewhere
+    if (grantedElsewhere(skill)) return; // locked elsewhere
     const already = data.skills.includes(skill);
     if (already) {
       patch({ skills: data.skills.filter(s => s !== skill) });
       return;
     }
     const classCount = classChoice?.count ?? 2;
-    const classPicked = data.skills.filter(s => !bgSkills.includes(s) && s !== data.raceBonusSkill);
+    const classPicked = data.skills.filter(s => !grantedElsewhere(s));
     if (classPicked.length >= classCount) return; // already at max
     patch({ skills: [...data.skills, skill] });
+  };
+
+  const bgChoiceFrom = bgSkillGrant.choiceFrom.length > 0 ? bgSkillGrant.choiceFrom : ALL_SKILLS;
+  const bgSkillsRemaining = bgSkillGrant.choiceCount - data.bgSkillChoices.length;
+
+  const toggleBgSkill = (skill: string) => {
+    const already = data.bgSkillChoices.includes(skill);
+    if (already) {
+      patch({
+        bgSkillChoices: data.bgSkillChoices.filter(s => s !== skill),
+        skills: data.skills.filter(s => s !== skill),
+      });
+      return;
+    }
+    // Can't pick a skill already granted elsewhere or already taken as a class skill.
+    if (bgSkills.includes(skill) || raceSkillGrant.fixed.includes(skill) ||
+        data.raceSkillChoices.includes(skill) || skill === data.raceBonusSkill ||
+        data.skills.includes(skill)) return;
+    if (bgSkillsRemaining <= 0) return;
+    patch({ bgSkillChoices: [...data.bgSkillChoices, skill], skills: [...data.skills, skill] });
+  };
+
+  const raceChoiceFrom = raceSkillGrant.choiceFrom.length > 0 ? raceSkillGrant.choiceFrom : ALL_SKILLS;
+  const raceSkillsRemaining = raceSkillGrant.choiceCount - data.raceSkillChoices.length;
+
+  const toggleRaceSkill = (skill: string) => {
+    const already = data.raceSkillChoices.includes(skill);
+    if (already) {
+      patch({
+        raceSkillChoices: data.raceSkillChoices.filter(s => s !== skill),
+        skills: data.skills.filter(s => s !== skill),
+      });
+      return;
+    }
+    // Can't pick a skill already granted by the background/race or already taken as a class skill.
+    if (bgSkills.includes(skill) || raceSkillGrant.fixed.includes(skill) ||
+        skill === data.raceBonusSkill || data.skills.includes(skill)) return;
+    if (raceSkillsRemaining <= 0) return;
+    patch({ raceSkillChoices: [...data.raceSkillChoices, skill], skills: [...data.skills, skill] });
   };
 
   const toggleRaceBonusSkill = (skill: string) => {
@@ -189,8 +265,26 @@ export function StepSkills({ data, patch }: StepSkillsProps) {
   };
 
   const classCount = classChoice?.count ?? 2;
-  const classPicked = data.skills.filter(s => !bgSkills.includes(s) && s !== data.raceBonusSkill);
+  const classPicked = data.skills.filter(s => !grantedElsewhere(s));
   const remaining = classCount - classPicked.length;
+
+  // Proficiency/expertise choices from the race variant's bonus feat (if it grants any).
+  const raceBonusFeatEntry = data.raceBonusFeat
+    ? allFeats.find(f => f.name === data.raceBonusFeat!.name && f.source === data.raceBonusFeat!.source)
+    : undefined;
+  const raceBonusFeatProf = raceBonusFeatEntry ? parseFeatProficiencies(raceBonusFeatEntry) : null;
+
+  // Expertise (Rogue L1/L6, Bard L3/L10) — chosen from the character's proficient skills.
+  const expertiseMax = data.classRef ? expertiseCount(data.classRef.name, data.level) : 0;
+  const expertiseRemaining = expertiseMax - data.expertise.length;
+  const toggleExpertise = (skill: string) => {
+    if (data.expertise.includes(skill)) {
+      patch({ expertise: data.expertise.filter(s => s !== skill) });
+      return;
+    }
+    if (expertiseRemaining <= 0 || !data.skills.includes(skill)) return;
+    patch({ expertise: [...data.expertise, skill] });
+  };
 
   return (
     <div className="px-4 pb-6 pt-3 space-y-4">
@@ -204,22 +298,61 @@ export function StepSkills({ data, patch }: StepSkillsProps) {
         </p>
       </div>
 
-      {/* Background skills — locked */}
-      {bgSkills.length > 0 && (
-        <div>
-          <p className="text-xs text-[var(--color-faint)] mb-1.5 uppercase tracking-wide font-semibold">
-            From background (automatic)
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {bgSkills.map(s => (
-              <span
-                key={s}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30"
-              >
-                {s}
-              </span>
-            ))}
-          </div>
+      {/* Background skills — fixed (locked) + any choose-a-skill grant */}
+      {(bgSkills.length > 0 || bgSkillGrant.choiceCount > 0) && (
+        <div className="space-y-3">
+          {bgSkills.length > 0 && (
+            <div>
+              <p className="text-xs text-[var(--color-faint)] mb-1.5 uppercase tracking-wide font-semibold">
+                From background (automatic)
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {bgSkills.map(s => (
+                  <span
+                    key={s}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {bgSkillGrant.choiceCount > 0 && (
+            <div>
+              <p className="text-xs text-[var(--color-faint)] mb-1.5 uppercase tracking-wide font-semibold">
+                From background — choose {bgSkillGrant.choiceCount}
+                {bgSkillsRemaining > 0 ? ` (${bgSkillsRemaining} remaining)` : ' — all chosen'}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {bgChoiceFrom.map(skill => {
+                  const picked = data.bgSkillChoices.includes(skill);
+                  const locked = !picked && (
+                    bgSkills.includes(skill) || raceSkillGrant.fixed.includes(skill) ||
+                    data.raceSkillChoices.includes(skill) || skill === data.raceBonusSkill ||
+                    data.skills.includes(skill) || bgSkillsRemaining <= 0
+                  );
+                  return (
+                    <button
+                      key={skill}
+                      onClick={() => toggleBgSkill(skill)}
+                      disabled={locked}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                        picked
+                          ? 'bg-amber-500 text-slate-900'
+                          : locked
+                          ? 'bg-[var(--color-card)] text-[var(--color-disabled)] cursor-not-allowed'
+                          : 'bg-[var(--color-card)] text-[var(--color-text-2)] hover:bg-[var(--color-raised)]'
+                      }`}
+                    >
+                      {skill}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -230,8 +363,7 @@ export function StepSkills({ data, patch }: StepSkillsProps) {
         </p>
         <div className="flex flex-wrap gap-2">
           {available.map(skill => {
-            const isBg = bgSkills.includes(skill);
-            if (isBg || skill === data.raceBonusSkill) return null; // shown above already
+            if (grantedElsewhere(skill)) return null; // granted elsewhere (bg/race) — shown in its own section
             const picked = classPicked.includes(skill);
             const atMax = !picked && remaining <= 0;
             return (
@@ -253,6 +385,66 @@ export function StepSkills({ data, patch }: StepSkillsProps) {
           })}
         </div>
       </div>
+
+      {/* Race skill proficiencies (fixed + choice, from the race's skillProficiencies block) */}
+      {(raceSkillGrant.fixed.length > 0 || raceSkillGrant.choiceCount > 0) && (
+        <div className="space-y-3">
+          <h2 className="text-base font-semibold">From race</h2>
+
+          {raceSkillGrant.fixed.length > 0 && (
+            <div>
+              <p className="text-xs text-[var(--color-faint)] mb-1.5 uppercase tracking-wide font-semibold">
+                Automatic
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {raceSkillGrant.fixed.map(s => (
+                  <span
+                    key={s}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {raceSkillGrant.choiceCount > 0 && (
+            <div>
+              <p className="text-xs text-[var(--color-faint)] mb-1.5 uppercase tracking-wide font-semibold">
+                Choose {raceSkillGrant.choiceCount}
+                {raceSkillsRemaining > 0 ? ` (${raceSkillsRemaining} remaining)` : ' — all chosen'}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {raceChoiceFrom.map(skill => {
+                  const picked = data.raceSkillChoices.includes(skill);
+                  const locked = !picked && (
+                    bgSkills.includes(skill) || raceSkillGrant.fixed.includes(skill) ||
+                    skill === data.raceBonusSkill || data.skills.includes(skill) ||
+                    raceSkillsRemaining <= 0
+                  );
+                  return (
+                    <button
+                      key={skill}
+                      onClick={() => toggleRaceSkill(skill)}
+                      disabled={locked}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                        picked
+                          ? 'bg-amber-500 text-slate-900'
+                          : locked
+                          ? 'bg-[var(--color-card)] text-[var(--color-disabled)] cursor-not-allowed'
+                          : 'bg-[var(--color-card)] text-[var(--color-text-2)] hover:bg-[var(--color-raised)]'
+                      }`}
+                    >
+                      {skill}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Race/subrace bonus skill + feat (e.g. Variant Human) */}
       {(bonusGrant.grantsSkill || bonusGrant.grantsFeat) && (
@@ -295,14 +487,24 @@ export function StepSkills({ data, patch }: StepSkillsProps) {
                 Choose 1 bonus feat
               </p>
               {data.raceBonusFeat ? (
-                <div className="flex items-center justify-between bg-[var(--color-card)] rounded-xl px-3 py-2">
-                  <span className="text-sm font-medium">{data.raceBonusFeat.name}</span>
-                  <button
-                    onClick={() => patch({ raceBonusFeat: null })}
-                    className="text-xs text-amber-500 font-semibold"
-                  >
-                    Change
-                  </button>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between bg-[var(--color-card)] rounded-xl px-3 py-2">
+                    <span className="text-sm font-medium">{data.raceBonusFeat.name}</span>
+                    <button
+                      onClick={() => patch({ raceBonusFeat: null, raceBonusFeatProfSel: EMPTY_FEAT_PROF_SELECTION })}
+                      className="text-xs text-amber-500 font-semibold"
+                    >
+                      Change
+                    </button>
+                  </div>
+                  {raceBonusFeatProf && raceBonusFeatProf.choices.length > 0 && (
+                    <FeatProficiencyPicker
+                      proficiencies={raceBonusFeatProf}
+                      proficientSkills={data.skills}
+                      value={data.raceBonusFeatProfSel}
+                      onChange={sel => patch({ raceBonusFeatProfSel: sel })}
+                    />
+                  )}
                 </div>
               ) : (
                 <div>
@@ -318,7 +520,7 @@ export function StepSkills({ data, patch }: StepSkillsProps) {
                       {featResults.map(feat => (
                         <button
                           key={`${feat.name}|${feat.source}`}
-                          onClick={() => { patch({ raceBonusFeat: { name: feat.name, source: feat.source } }); setFeatQuery(''); setFeatResults([]); }}
+                          onClick={() => { patch({ raceBonusFeat: { name: feat.name, source: feat.source }, raceBonusFeatProfSel: EMPTY_FEAT_PROF_SELECTION }); setFeatQuery(''); setFeatResults([]); }}
                           className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-white/5"
                         >
                           <span className="text-sm font-medium">{feat.name}</span>
@@ -445,6 +647,47 @@ export function StepSkills({ data, patch }: StepSkillsProps) {
           )}
         </div>
       )}
+
+      {/* Expertise (Rogue/Bard) — double proficiency bonus on chosen proficient skills */}
+      {expertiseMax > 0 && (
+        <div>
+          <h2 className="text-base font-semibold">Expertise</h2>
+          <p className="text-xs text-[var(--color-faint)] mt-1 mb-2">
+            Choose {expertiseMax} of your proficient skills to gain Expertise (doubles the
+            proficiency bonus).{' '}
+            {expertiseRemaining > 0 ? `(${expertiseRemaining} remaining)` : '— all chosen'}
+          </p>
+          {data.skills.length === 0 ? (
+            <p className="text-xs text-[var(--color-disabled)]">Choose your skill proficiencies above first.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {data.skills.map(skill => {
+                const picked = data.expertise.includes(skill);
+                const atMax = !picked && expertiseRemaining <= 0;
+                return (
+                  <button
+                    key={skill}
+                    onClick={() => toggleExpertise(skill)}
+                    disabled={atMax}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                      picked
+                        ? 'bg-amber-500 text-slate-900'
+                        : atMax
+                        ? 'bg-[var(--color-card)] text-[var(--color-disabled)] cursor-not-allowed'
+                        : 'bg-[var(--color-card)] text-[var(--color-text-2)] hover:bg-[var(--color-raised)]'
+                    }`}
+                  >
+                    {skill}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Class/subclass option-choices (Fighting Style, Invocations, Elemental Disciplines, …) */}
+      <ClassOptionsPicker data={data} patch={patch} />
     </div>
   );
 }

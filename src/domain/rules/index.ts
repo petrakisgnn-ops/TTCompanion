@@ -1,4 +1,5 @@
 import type { AbilityScores, Character } from '../character/types';
+import { armorClass } from './ac';
 export { maxSpellLevelForClass, maxSpellLevelForCharacter, LEVEL_LABEL } from './spellcasting';
 
 export const abilityMod = (score: number): number =>
@@ -20,16 +21,12 @@ export const totalLevel = (classes: { level: number }[]): number =>
   classes.reduce((sum, c) => sum + c.level, 0);
 
 /**
- * AC has no dedicated field on Character — it lives as an optional override inside
- * the player-configurable `combat-stats` widget (see widgets/CombatStatsWidget.tsx).
- * Read that override if the widget is present, else fall back to the same
- * `10 + dexMod` default the widget itself uses.
+ * A character's AC without resolving worn armor — the manual override (combat-stats widget) if
+ * set, else unarmored (`10 + DEX` plus Barbarian/Monk Unarmored Defense). Synchronous, for
+ * contexts without item-DB access (e.g. DM combatant conversion). Components that can resolve
+ * equipped armor should use the `useCharacterAc` hook, which feeds armor into `armorClass`.
  */
-export const characterAc = (character: Character): number => {
-  const widget = character.dashboard.widgets.find(w => w.type === 'combat-stats');
-  const override = (widget?.config as { acOverride?: number } | undefined)?.acOverride;
-  return override ?? 10 + abilityMod(character.abilityScores.dex);
-};
+export const characterAc = (character: Character): number => armorClass(character);
 
 export const allAbilityMods = (scores: AbilityScores) => ({
   str: abilityMod(scores.str),

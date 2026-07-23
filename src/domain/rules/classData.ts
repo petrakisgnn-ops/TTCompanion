@@ -184,6 +184,13 @@ export function isAsiLevel(className: string, level: number): boolean {
   return (ASI_LEVELS[className] ?? ASI_DEFAULT).includes(level);
 }
 
+/** Every level at or below `level` at which the class grants an ASI/feat — used to collect
+ * the choices a character created above level 1 has already accrued (e.g. a level-10 Fighter
+ * has three: levels 4, 6 and 8). */
+export function asiLevelsUpTo(className: string, level: number): number[] {
+  return (ASI_LEVELS[className] ?? ASI_DEFAULT).filter(l => l <= level);
+}
+
 // Level at which the class picks a subclass
 const SUBCLASS_LEVEL: Record<string, number> = {
   Cleric: 1, Sorcerer: 1, Warlock: 1,

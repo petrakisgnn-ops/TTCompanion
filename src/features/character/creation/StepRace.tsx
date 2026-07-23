@@ -56,7 +56,8 @@ export function StepRace({ data, patch }: StepRaceProps) {
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 space-y-2">
+      {/* Sticky below the wizard's progress header (~57px tall) so search stays reachable in long lists */}
+      <div className="sticky top-[57px] z-[9] bg-[var(--color-app)] border-b border-[var(--color-border)] px-4 py-3 space-y-2">
         <h2 className="text-base font-semibold">Choose a Race</h2>
         <input
           type="search"
@@ -71,34 +72,36 @@ export function StepRace({ data, patch }: StepRaceProps) {
         {filtered.map(opt => {
           const isSelected = selectedKey === `${opt.subraceName ?? opt.raceName}|${opt.subraceSource ?? opt.raceSource}::${opt.raceName}|${opt.raceSource}`;
           return (
-            <button
-              key={opt.key}
-              onClick={() => choose(opt)}
-              className={`w-full flex items-center justify-between px-4 py-3 text-left min-h-[3rem] transition-colors ${
-                isSelected
-                  ? 'bg-amber-500/10 border-l-2 border-amber-500'
-                  : 'hover:bg-white/5 active:bg-white/10'
-              }`}
-            >
-              <span>
-                <span className={`font-medium text-sm ${isSelected ? 'text-amber-400' : ''}`}>
-                  {opt.name}
+            <div key={opt.key}>
+              <button
+                onClick={() => choose(opt)}
+                className={`w-full flex items-center justify-between px-4 py-3 text-left min-h-[3rem] transition-colors ${
+                  isSelected
+                    ? 'bg-amber-500/10 border-l-2 border-amber-500'
+                    : 'hover:bg-white/5 active:bg-white/10'
+                }`}
+              >
+                <span>
+                  <span className={`font-medium text-sm ${isSelected ? 'text-amber-400' : ''}`}>
+                    {opt.name}
+                  </span>
+                  {opt.subraceName && (
+                    <span className="text-xs text-[var(--color-faint)] ml-1.5">({opt.raceName})</span>
+                  )}
                 </span>
-                {opt.subraceName && (
-                  <span className="text-xs text-[var(--color-faint)] ml-1.5">({opt.raceName})</span>
-                )}
-              </span>
-              <span className="text-xs text-[var(--color-faint)] ml-2 shrink-0">{opt.source}</span>
-            </button>
+                <span className="text-xs text-[var(--color-faint)] ml-2 shrink-0">{opt.source}</span>
+              </button>
+
+              {/* Preview rendered directly under the selected row so it's obvious it belongs to it */}
+              {isSelected && selected && selected.entries.length > 0 && (
+                <div className="mx-4 my-3 p-3 bg-[var(--color-card)] rounded-xl text-sm leading-relaxed text-[var(--color-text-2)] space-y-1">
+                  {renderEntries(selected.entries)}
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
-
-      {selected && selected.entries.length > 0 && (
-        <div className="mx-4 mt-3 p-3 bg-[var(--color-card)] rounded-xl text-sm leading-relaxed text-[var(--color-text-2)] space-y-1">
-          {renderEntries(selected.entries)}
-        </div>
-      )}
     </div>
   );
 }
