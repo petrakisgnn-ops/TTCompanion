@@ -29,16 +29,16 @@ function HpTrackerWidget({ character }: WidgetProps) {
       <div className="flex items-end justify-between">
         <div>
           <span className="text-3xl font-bold">{current}</span>
-          <span className="text-slate-400">/{max}</span>
+          <span className="text-[var(--color-text-3)]">/{max}</span>
           {temp > 0 && <span className="ml-1.5 text-sky-400 text-sm">+{temp}t</span>}
         </div>
         <div className="text-right">
-          <span className="text-xs text-slate-500 uppercase tracking-wide font-semibold block">HP</span>
-          <span className="text-xs text-slate-600">{hitDiceAvailable}/{level} HD</span>
+          <span className="text-xs text-[var(--color-muted)] uppercase tracking-wide font-semibold block">HP</span>
+          <span className="text-xs text-[var(--color-faint)]">{hitDiceAvailable}/{level} HD</span>
         </div>
       </div>
 
-      <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-[var(--color-raised)] rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
       </div>
 
@@ -50,7 +50,7 @@ function HpTrackerWidget({ character }: WidgetProps) {
             <button
               key={v}
               onClick={() => updateHp(character.id, n)}
-              className="flex-1 py-2 rounded-lg bg-slate-700 text-xs font-semibold hover:bg-slate-600 active:scale-95 transition-all"
+              className="flex-1 py-2 rounded-lg bg-[var(--color-raised)] text-xs font-semibold hover:bg-[var(--color-card-inner)] active:scale-95 transition-all"
             >
               {n > 0 ? `+${n}` : n}
             </button>
@@ -60,7 +60,7 @@ function HpTrackerWidget({ character }: WidgetProps) {
 
       {/* Heal/damage input */}
       <div className="flex gap-1.5">
-        <div className="flex rounded-lg overflow-hidden border border-white/10 shrink-0">
+        <div className="flex rounded-lg overflow-hidden border border-[var(--color-border)] shrink-0">
           {(['damage', 'heal'] as const).map(m => (
             <button
               key={m}
@@ -68,7 +68,7 @@ function HpTrackerWidget({ character }: WidgetProps) {
               className={`px-2.5 py-1.5 text-xs font-semibold transition-colors ${
                 mode === m
                   ? m === 'damage' ? 'bg-red-500/30 text-red-400' : 'bg-emerald-500/30 text-emerald-400'
-                  : 'text-slate-500'
+                  : 'text-[var(--color-muted)]'
               }`}
             >
               {m === 'damage' ? 'Dmg' : 'Heal'}
@@ -82,11 +82,11 @@ function HpTrackerWidget({ character }: WidgetProps) {
           onChange={e => setInputVal(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && apply()}
           placeholder="0"
-          className="flex-1 min-w-0 bg-slate-700 rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-slate-500"
+          className="flex-1 min-w-0 bg-[var(--color-raised)] rounded-lg px-2 py-1.5 text-sm text-center outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-[var(--color-faint)]"
         />
         <button
           onClick={apply}
-          className="px-3 py-1.5 rounded-lg bg-slate-700 text-sm font-semibold hover:bg-slate-600"
+          className="px-3 py-1.5 rounded-lg bg-[var(--color-raised)] text-sm font-semibold hover:bg-[var(--color-card-inner)]"
         >
           Go
         </button>
@@ -99,7 +99,7 @@ function HpTrackerWidget({ character }: WidgetProps) {
         <div className="flex gap-2 pt-0.5">
           <button
             onClick={() => setShowShortRest(true)}
-            className="flex-1 text-xs text-slate-400 py-1.5 rounded-lg bg-slate-700/50 hover:bg-slate-700 transition-colors"
+            className="flex-1 text-xs text-[var(--color-text-3)] py-1.5 rounded-lg bg-[var(--color-card-inner)] hover:bg-[var(--color-card-inner)] transition-colors"
           >
             Short Rest
           </button>

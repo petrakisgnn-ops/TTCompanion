@@ -37,18 +37,18 @@ function SkillsWidget({ character }: WidgetProps) {
 
   return (
     <div className="p-3">
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Skills</p>
+      <p className="text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wide mb-2">Skills</p>
       <div className="space-y-0.5">
         {withMods.map(({ name, ability, mod, proficient }) => (
           <div key={name} className="flex items-center gap-2 py-0.5">
             <span
               className={`w-2 h-2 rounded-full shrink-0 ${
-                proficient ? 'bg-amber-500' : 'border border-slate-600'
+                proficient ? 'bg-amber-500' : 'border border-[var(--color-border)]'
               }`}
             />
-            <span className="flex-1 text-xs text-slate-300 truncate">{name}</span>
-            <span className="text-xs text-slate-500 w-6 text-center">{ability.slice(0, 3).toUpperCase()}</span>
-            <span className={`text-xs font-bold w-7 text-right ${proficient ? 'text-amber-400' : 'text-slate-400'}`}>
+            <span className="flex-1 text-xs text-[var(--color-text-2)] truncate">{name}</span>
+            <span className="text-xs text-[var(--color-muted)] w-6 text-center">{ability.slice(0, 3).toUpperCase()}</span>
+            <span className={`text-xs font-bold w-7 text-right ${proficient ? 'text-amber-400' : 'text-[var(--color-text-3)]'}`}>
               {mod >= 0 ? '+' : ''}{mod}
             </span>
           </div>

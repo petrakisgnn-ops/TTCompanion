@@ -17,7 +17,7 @@ function SavingThrowsWidget({ character }: WidgetProps) {
 
   return (
     <div className="p-3 space-y-1">
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Saving Throws</p>
+      <p className="text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wide mb-2">Saving Throws</p>
       <div className="grid grid-cols-3 gap-1.5">
         {SAVES.map(({ key, label }) => {
           const proficient = character.proficiencies.saves.includes(key);
@@ -26,15 +26,15 @@ function SavingThrowsWidget({ character }: WidgetProps) {
             <div
               key={key}
               className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 ${
-                proficient ? 'bg-amber-500/10' : 'bg-slate-700/40'
+                proficient ? 'bg-amber-500/10' : 'bg-[var(--color-card-inner)]'
               }`}
             >
               <span
                 className={`w-2 h-2 rounded-full shrink-0 ${
-                  proficient ? 'bg-amber-500' : 'border border-slate-600'
+                  proficient ? 'bg-amber-500' : 'border border-[var(--color-border)]'
                 }`}
               />
-              <span className="text-xs text-slate-400 w-7">{label}</span>
+              <span className="text-xs text-[var(--color-text-3)] w-7">{label}</span>
               <span className={`text-sm font-bold ml-auto ${proficient ? 'text-amber-400' : ''}`}>
                 {mod >= 0 ? '+' : ''}{mod}
               </span>

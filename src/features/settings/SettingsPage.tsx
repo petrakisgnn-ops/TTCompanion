@@ -1,5 +1,6 @@
 ﻿import { useSettingsStore } from '../../stores/settingsStore';
 import type { Edition, Theme } from '../../stores/settingsStore';
+import { THEMES } from '../../app/themes';
 
 export function SettingsPage() {
   const { edition, setEdition, theme, setTheme } = useSettingsStore();
@@ -98,35 +99,33 @@ function EditionPicker({ value, onChange }: { value: Edition; onChange: (e: Edit
 
 // ── Theme picker ─────────────────────────────────────────────────────────────
 
-interface ThemeOption { value: Theme; label: string; icon: string }
-const THEME_OPTIONS: ThemeOption[] = [
-  { value: 'dark',  label: 'Dark',  icon: 'dark_mode'  },
-  { value: 'light', label: 'Light', icon: 'light_mode' },
-];
-
 function ThemePicker({ value, onChange }: { value: Theme; onChange: (t: Theme) => void }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-      {THEME_OPTIONS.map(opt => {
-        const active = value === opt.value;
+      {THEMES.map(t => {
+        const active = value === t.id;
         return (
           <button
-            key={opt.value}
-            onClick={() => onChange(opt.value)}
+            key={t.id}
+            onClick={() => onChange(t.id)}
             style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              padding: '11px 12px', borderRadius: 10,
-              border: active ? '1.5px solid #d08c4a' : '1.5px solid var(--color-border)',
-              background: active ? 'rgba(176,115,51,.12)' : 'transparent',
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '9px 11px', borderRadius: 10,
+              border: active ? '1.5px solid var(--color-gold-lt)' : '1.5px solid var(--color-border)',
+              background: active ? 'var(--color-raised)' : 'transparent',
               cursor: 'pointer', transition: 'border-color .15s, background .15s',
             }}
           >
-            <span className="msym" style={{ fontSize: 18, color: active ? '#d08c4a' : 'var(--color-muted)' }}>
-              {opt.icon}
+            {/* Color swatch: background · surface · accent */}
+            <span style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1px solid var(--color-border)', flexShrink: 0 }}>
+              {t.swatch.map((c, i) => (
+                <span key={i} style={{ width: 11, height: 22, background: c }} />
+              ))}
             </span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: active ? '#d08c4a' : 'var(--color-text-2)' }}>
-              {opt.label}
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: active ? 'var(--color-gold-lt)' : 'var(--color-text-2)', flex: 1, textAlign: 'left' }}>
+              {t.label}
             </span>
+            {active && <span className="msym" style={{ fontSize: 15, color: 'var(--color-gold-lt)' }}>check_circle</span>}
           </button>
         );
       })}

@@ -57,10 +57,10 @@ function PreparedSpellsWidget({ character }: WidgetProps) {
     <div className="p-3 space-y-2">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+        <p className="text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wide">
           Prepared Spells
           {sorted.length > 0 && (
-            <span className="ml-1.5 text-slate-600 normal-case font-normal">
+            <span className="ml-1.5 text-[var(--color-faint)] normal-case font-normal">
               ({sorted.length})
             </span>
           )}
@@ -84,10 +84,10 @@ function PreparedSpellsWidget({ character }: WidgetProps) {
             placeholder="Search spells…"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-700 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-slate-500"
+            className="w-full bg-[var(--color-raised)] rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-[var(--color-faint)]"
           />
           {searchResults.length > 0 && (
-            <div className="mt-1 bg-slate-700 rounded-xl overflow-hidden divide-y divide-white/5">
+            <div className="mt-1 bg-[var(--color-raised)] rounded-xl overflow-hidden divide-y divide-[var(--color-border)]">
               {searchResults.map(spell => (
                 <button
                   key={spell._key}
@@ -98,7 +98,7 @@ function PreparedSpellsWidget({ character }: WidgetProps) {
                   className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-white/5"
                 >
                   <span className="text-sm">{spell.name}</span>
-                  <span className="text-xs text-slate-500 ml-2 shrink-0">
+                  <span className="text-xs text-[var(--color-muted)] ml-2 shrink-0">
                     {LEVEL_LABEL[spell.level]} · {SCHOOL_SHORT[spell.school] ?? spell.school}
                   </span>
                 </button>
@@ -106,14 +106,14 @@ function PreparedSpellsWidget({ character }: WidgetProps) {
             </div>
           )}
           {searchQuery.trim() && searchResults.length === 0 && (
-            <p className="text-xs text-slate-600 mt-1 text-center">No spells found</p>
+            <p className="text-xs text-[var(--color-faint)] mt-1 text-center">No spells found</p>
           )}
         </div>
       )}
 
       {/* Prepared list */}
       {sorted.length === 0 && !showSearch && (
-        <p className="text-xs text-slate-600 py-2 text-center">
+        <p className="text-xs text-[var(--color-faint)] py-2 text-center">
           {knownSpells.length === 0
             ? 'Add spells to your Known Spells list first.'
             : 'No spells prepared. Tap + Add to start.'}
@@ -131,20 +131,20 @@ function PreparedSpellsWidget({ character }: WidgetProps) {
             {/* Tap name → detail page */}
             <button
               onClick={() => navigate(`/spells/${encodeURIComponent(spell._key)}`)}
-              className="flex-1 text-left text-sm text-slate-200 hover:text-amber-300 transition-colors min-w-0 truncate"
+              className="flex-1 text-left text-sm text-[var(--color-text)] hover:text-amber-300 transition-colors min-w-0 truncate"
             >
               {spell.name}
             </button>
 
             {/* School */}
-            <span className="text-xs text-slate-600 shrink-0">
+            <span className="text-xs text-[var(--color-faint)] shrink-0">
               {SCHOOL_SHORT[spell.school] ?? spell.school}
             </span>
 
             {/* Remove */}
             <button
               onClick={() => removePreparedSpell(character.id, { name: spell.name, source: spell.source })}
-              className="text-slate-700 hover:text-red-400 transition-colors text-xs shrink-0 opacity-0 group-hover:opacity-100"
+              className="text-[var(--color-faint)] hover:text-red-400 transition-colors text-xs shrink-0 opacity-0 group-hover:opacity-100"
               aria-label="Remove"
             >
               ✕

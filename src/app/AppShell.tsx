@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useModeStore } from '../stores/modeStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { BottomNav } from './BottomNav';
+import { getTheme, THEME_CLASSES } from './themes';
 
 function AppHeader() {
   const navigate = useNavigate();
@@ -66,8 +67,11 @@ export function AppShell() {
   const { theme } = useSettingsStore();
 
   useEffect(() => {
-    document.documentElement.classList.toggle('light', theme === 'light');
-    document.documentElement.style.colorScheme = theme;
+    const root = document.documentElement;
+    root.classList.remove(...THEME_CLASSES);
+    const def = getTheme(theme);
+    if (def.className) root.classList.add(def.className);
+    root.style.colorScheme = def.isDark ? 'dark' : 'light';
   }, [theme]);
 
   return (

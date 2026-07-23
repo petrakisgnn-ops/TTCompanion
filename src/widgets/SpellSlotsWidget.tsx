@@ -19,7 +19,7 @@ function SlotRow({ resource, charId }: SlotRowProps) {
 
   return (
     <div className="flex items-center gap-2 py-1.5">
-      <span className="text-xs text-slate-400 w-8 shrink-0">{slotLabel(resource)}</span>
+      <span className="text-xs text-[var(--color-text-3)] w-8 shrink-0">{slotLabel(resource)}</span>
       <div className="flex gap-1 flex-wrap flex-1">
         {pips.map((_, i) => {
           const filled = i < resource.current;
@@ -34,13 +34,13 @@ function SlotRow({ resource, charId }: SlotRowProps) {
               className={`w-6 h-6 rounded border-2 transition-colors ${
                 filled
                   ? 'bg-violet-500 border-violet-500'
-                  : 'bg-transparent border-slate-600 hover:border-violet-500'
+                  : 'bg-transparent border-[var(--color-border)] hover:border-violet-500'
               }`}
             />
           );
         })}
       </div>
-      <span className="text-xs text-slate-500 shrink-0">{resource.current}/{resource.max}</span>
+      <span className="text-xs text-[var(--color-muted)] shrink-0">{resource.current}/{resource.max}</span>
     </div>
   );
 }
@@ -53,13 +53,13 @@ function SpellSlotsWidget({ character }: WidgetProps) {
   if (slots.length === 0) {
     return (
       <div className="p-3 flex items-center justify-center min-h-[3rem]">
-        <p className="text-xs text-slate-600 italic">No spell slots.</p>
+        <p className="text-xs text-[var(--color-faint)] italic">No spell slots.</p>
       </div>
     );
   }
 
   return (
-    <div className="px-3 pt-2 pb-1 divide-y divide-white/5">
+    <div className="px-3 pt-2 pb-1 divide-y divide-[var(--color-border)]">
       {slots.map(r => (
         <SlotRow key={r.id} resource={r} charId={character.id} />
       ))}

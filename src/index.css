@@ -78,6 +78,78 @@ html.light {
   --color-accent-hover:   var(--color-gold-hover);
 }
 
+/* ── Aged Parchment (light, warm paper & antique gold) ── */
+html.theme-parchment {
+  --color-app: #f2e8c9; --color-deep: #e6d8b0; --color-nav: #fff9ed;
+  --color-card: #fff9ed; --color-card-inner: #f2e8c9; --color-raised: #ecdcb4;
+  --color-border: rgba(74,52,37,0.14); --color-border-accent: rgba(200,162,74,0.4);
+  --color-text: #4a3425; --color-text-2: #5a4230; --color-text-3: #6d543f;
+  --color-muted: #7b5a40; --color-faint: #9c8054; --color-disabled: #c3b087;
+  --color-gold: #c8a24a; --color-gold-lt: #a67c1f; --color-gold-pale: #d9b96a;
+  --color-gold-hover: #b58f38; --color-gold-on: #4a3425;
+  --color-good: #4d7a53; --color-bad: #8c2f39;
+}
+
+/* ── Arcane (deep blue-violet) ── */
+html.theme-arcane {
+  --color-app: #101521; --color-deep: #0a0e17; --color-nav: #0c111c;
+  --color-card: #1d2538; --color-card-inner: #151c2b; --color-raised: #27314a;
+  --color-border: rgba(255,255,255,0.08); --color-border-accent: rgba(95,168,255,0.35);
+  --color-text: #f2f5fa; --color-text-2: #d6dded; --color-text-3: #b2bcd2;
+  --color-muted: #8892a8; --color-faint: #667289; --color-disabled: #454f66;
+  --color-gold: #5fa8ff; --color-gold-lt: #7cb8ff; --color-gold-pale: #a970ff;
+  --color-gold-hover: #4f98ef; --color-gold-on: #0a0e17;
+  --color-good: #7fffd4; --color-bad: #ff6b81; --color-violet: #a970ff;
+}
+
+/* ── Treasure (gold & copper on warm black) ── */
+html.theme-treasure {
+  --color-app: #1c1613; --color-deep: #120d0a; --color-nav: #16100c;
+  --color-card: #2b241e; --color-card-inner: #201a15; --color-raised: #372c23;
+  --color-border: rgba(212,175,55,0.12); --color-border-accent: rgba(212,175,55,0.4);
+  --color-text: #f5ecd8; --color-text-2: #e0d4bc; --color-text-3: #c9bc9f;
+  --color-muted: #a89b80; --color-faint: #837860; --color-disabled: #574f43;
+  --color-gold: #d4af37; --color-gold-lt: #e0c04a; --color-gold-pale: #edd68a;
+  --color-gold-hover: #c49e2e; --color-gold-on: #1c1613;
+  --color-good: #6bbf7f; --color-bad: #a32036;
+}
+
+/* ── Emerald (forest greens & silver) ── */
+html.theme-emerald {
+  --color-app: #13221b; --color-deep: #0c1811; --color-nav: #0e1b14;
+  --color-card: #20372a; --color-card-inner: #182b20; --color-raised: #294735;
+  --color-border: rgba(201,213,217,0.10); --color-border-accent: rgba(59,166,107,0.4);
+  --color-text: #f6f8f2; --color-text-2: #dde6da; --color-text-3: #c9d5d9;
+  --color-muted: #9aa89e; --color-faint: #74837a; --color-disabled: #4b594f;
+  --color-gold: #3ba66b; --color-gold-lt: #4dba7d; --color-gold-pale: #7fa66a;
+  --color-gold-hover: #329660; --color-gold-on: #0c1811;
+  --color-good: #4dba7d; --color-bad: #e0556b;
+}
+
+/* ── Dungeon (stone, torchlight & blood) ── */
+html.theme-dungeon {
+  --color-app: #161616; --color-deep: #0c0c0c; --color-nav: #101010;
+  --color-card: #252525; --color-card-inner: #1b1b1b; --color-raised: #333333;
+  --color-border: rgba(232,226,213,0.10); --color-border-accent: rgba(244,162,97,0.35);
+  --color-text: #e8e2d5; --color-text-2: #d0cabd; --color-text-3: #b1aa9d;
+  --color-muted: #8a857a; --color-faint: #666666; --color-disabled: #444444;
+  --color-gold: #f4a261; --color-gold-lt: #f6b27a; --color-gold-pale: #f9c99e;
+  --color-gold-hover: #e8925a; --color-gold-on: #161616;
+  --color-good: #6bbf7f; --color-bad: #b33939;
+}
+
+/* ── Heraldry (light: navy, burgundy & gold) ── */
+html.theme-heraldry {
+  --color-app: #f6f2ea; --color-deep: #e9e1d1; --color-nav: #ffffff;
+  --color-card: #ffffff; --color-card-inner: #f6f2ea; --color-raised: #ece4d5;
+  --color-border: rgba(36,59,107,0.14); --color-border-accent: rgba(216,178,76,0.45);
+  --color-text: #22304f; --color-text-2: #33415e; --color-text-3: #47536d;
+  --color-muted: #5d6775; --color-faint: #8a93a3; --color-disabled: #bcc3cd;
+  --color-gold: #d8b24c; --color-gold-lt: #b8902f; --color-gold-pale: #e6c76e;
+  --color-gold-hover: #c89e3c; --color-gold-on: #22304f;
+  --color-good: #2f7a4a; --color-bad: #7c203a;
+}
+
 /* ── Base resets ── */
 *, *::before, *::after { box-sizing: border-box; }
 

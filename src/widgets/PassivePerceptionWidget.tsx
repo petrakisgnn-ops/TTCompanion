@@ -13,7 +13,7 @@ function PassivePerceptionWidget({ character }: WidgetProps) {
   return (
     <div className="flex flex-col items-center justify-center p-4 gap-1">
       <span className="text-4xl font-bold">{passive}</span>
-      <span className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Passive Perception</span>
+      <span className="text-xs text-[var(--color-muted)] uppercase tracking-wide font-semibold">Passive Perception</span>
       {proficient && (
         <span className="text-xs text-amber-500 mt-0.5">{expert ? 'Expertise' : 'Proficient'}</span>
       )}

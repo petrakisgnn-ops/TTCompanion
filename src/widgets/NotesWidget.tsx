@@ -21,12 +21,12 @@ function NotesWidget({ character }: WidgetProps) {
           onChange={e => setVal(e.target.value)}
           rows={5}
           autoFocus
-          className="w-full bg-slate-700 rounded-lg p-2 text-sm resize-none outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-slate-600"
+          className="w-full bg-[var(--color-raised)] rounded-lg p-2 text-sm resize-none outline-none focus:ring-1 focus:ring-amber-500 placeholder:text-[var(--color-faint)]"
           placeholder="Notes…"
         />
         <div className="flex gap-2">
           <button onClick={save} className="flex-1 py-1.5 bg-amber-500 text-slate-900 font-semibold rounded-lg text-xs">Save</button>
-          <button onClick={() => { setVal(character.notes); setEditing(false); }} className="px-3 py-1.5 bg-slate-700 rounded-lg text-xs text-slate-300">Cancel</button>
+          <button onClick={() => { setVal(character.notes); setEditing(false); }} className="px-3 py-1.5 bg-[var(--color-raised)] rounded-lg text-xs text-[var(--color-text-2)]">Cancel</button>
         </div>
       </div>
     );
@@ -38,9 +38,9 @@ function NotesWidget({ character }: WidgetProps) {
       onClick={() => setEditing(true)}
     >
       {character.notes ? (
-        <p className="text-sm text-slate-300 whitespace-pre-wrap line-clamp-6">{character.notes}</p>
+        <p className="text-sm text-[var(--color-text-2)] whitespace-pre-wrap line-clamp-6">{character.notes}</p>
       ) : (
-        <p className="text-sm text-slate-600">Tap to add notes…</p>
+        <p className="text-sm text-[var(--color-faint)]">Tap to add notes…</p>
       )}
     </div>
   );

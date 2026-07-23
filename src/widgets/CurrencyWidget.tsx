@@ -6,10 +6,10 @@ import type { Currency } from '../domain/character/types';
 interface CoinDef { key: keyof Currency; label: string; color: string }
 
 const COINS: CoinDef[] = [
-  { key: 'pp', label: 'PP', color: 'text-slate-300' },
+  { key: 'pp', label: 'PP', color: 'text-[var(--color-text-2)]' },
   { key: 'gp', label: 'GP', color: 'text-amber-400' },
-  { key: 'ep', label: 'EP', color: 'text-slate-400' },
-  { key: 'sp', label: 'SP', color: 'text-slate-300' },
+  { key: 'ep', label: 'EP', color: 'text-[var(--color-text-3)]' },
+  { key: 'sp', label: 'SP', color: 'text-[var(--color-text-2)]' },
   { key: 'cp', label: 'CP', color: 'text-orange-400' },
 ];
 
@@ -30,13 +30,13 @@ function CurrencyWidget({ character }: WidgetProps) {
           <div className="flex gap-0.5 mt-0.5">
             <button
               onClick={() => adjust(key, 1)}
-              className="w-6 h-6 rounded bg-slate-700 text-sm font-bold hover:bg-slate-600 active:scale-95 transition-all leading-none"
+              className="w-6 h-6 rounded bg-[var(--color-raised)] text-sm font-bold hover:bg-[var(--color-card-inner)] active:scale-95 transition-all leading-none"
             >
               +
             </button>
             <button
               onClick={() => adjust(key, -1)}
-              className="w-6 h-6 rounded bg-slate-700 text-sm font-bold hover:bg-slate-600 active:scale-95 transition-all leading-none"
+              className="w-6 h-6 rounded bg-[var(--color-raised)] text-sm font-bold hover:bg-[var(--color-card-inner)] active:scale-95 transition-all leading-none"
             >
               −
             </button>

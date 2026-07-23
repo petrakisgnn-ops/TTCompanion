@@ -9,7 +9,7 @@ function FeaturesWidget({ character }: WidgetProps) {
   if (groups.length === 0) {
     return (
       <div className="p-3">
-        <p className="text-xs text-slate-600 py-2 text-center">No features yet.</p>
+        <p className="text-xs text-[var(--color-faint)] py-2 text-center">No features yet.</p>
       </div>
     );
   }
@@ -18,7 +18,7 @@ function FeaturesWidget({ character }: WidgetProps) {
     <div className="p-3 space-y-3">
       {groups.map(g => (
         <div key={g.title} className="space-y-1.5">
-          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">{g.title}</p>
+          <p className="text-[10px] font-semibold text-[var(--color-muted)] uppercase tracking-wide">{g.title}</p>
           <div className="space-y-1.5">
             {g.features.map((f, i) => (
               <CollapsibleFeature key={`${f.title}|${i}`} title={f.title} badge={f.badge} entries={f.entries} />

@@ -36,7 +36,7 @@ function InventoryWidget({ character }: WidgetProps) {
   if (character.inventory.length === 0) {
     return (
       <div className="p-3 flex items-center justify-center min-h-[3rem]">
-        <p className="text-xs text-slate-600 italic">No items.</p>
+        <p className="text-xs text-[var(--color-faint)] italic">No items.</p>
       </div>
     );
   }
@@ -52,14 +52,14 @@ function InventoryWidget({ character }: WidgetProps) {
     return (
       <div
         key={key}
-        className="flex items-center gap-2 px-3 py-2.5 border-b border-white/5 last:border-0"
+        className="flex items-center gap-2 px-3 py-2.5 border-b border-[var(--color-border)] last:border-0"
       >
         <button
           onClick={() => toggleEquipped(character.id, key)}
           className={`w-4 h-4 rounded border-2 shrink-0 transition-colors ${
             inv.equipped
               ? 'bg-amber-500 border-amber-500'
-              : 'border-slate-600 hover:border-amber-500'
+              : 'border-[var(--color-border)] hover:border-amber-500'
           }`}
           aria-label={inv.equipped ? 'Unequip' : 'Equip'}
         />
@@ -75,7 +75,7 @@ function InventoryWidget({ character }: WidgetProps) {
           </span>
         )}
         {inv.quantity > 1 && (
-          <span className="text-xs text-slate-500 shrink-0">×{inv.quantity}</span>
+          <span className="text-xs text-[var(--color-muted)] shrink-0">×{inv.quantity}</span>
         )}
       </div>
     );
@@ -86,7 +86,7 @@ function InventoryWidget({ character }: WidgetProps) {
       {equipped.length > 0 && (
         <>
           <div className="px-3 pt-2.5 pb-0.5">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Equipped</span>
+            <span className="text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wide">Equipped</span>
           </div>
           {equipped.map(renderRow)}
         </>
@@ -94,7 +94,7 @@ function InventoryWidget({ character }: WidgetProps) {
       {carried.length > 0 && (
         <>
           <div className="px-3 pt-2.5 pb-0.5">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Carried</span>
+            <span className="text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wide">Carried</span>
           </div>
           {carried.map(renderRow)}
         </>

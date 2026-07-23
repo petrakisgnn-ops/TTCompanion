@@ -15,7 +15,7 @@ function ConditionsWidget({ character }: WidgetProps) {
   return (
     <div className="p-3 space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Conditions</span>
+        <span className="text-xs font-semibold text-[var(--color-text-3)] uppercase tracking-wide">Conditions</span>
         <button
           onClick={() => setShowPicker(v => !v)}
           className="text-xs text-amber-500 hover:text-amber-400 font-semibold"
@@ -30,7 +30,7 @@ function ConditionsWidget({ character }: WidgetProps) {
             <button
               key={cond}
               onClick={() => removeCondition(character.id, cond)}
-              className={`text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1 transition-opacity hover:opacity-80 ${CONDITION_COLOR[cond] ?? 'bg-slate-600 text-slate-200'}`}
+              className={`text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1 transition-opacity hover:opacity-80 ${CONDITION_COLOR[cond] ?? 'bg-[var(--color-raised)] text-[var(--color-text)]'}`}
             >
               {cond}
               <span className="opacity-60 text-[10px]">✕</span>
@@ -58,7 +58,7 @@ function ConditionsWidget({ character }: WidgetProps) {
       )}
 
       {!hasAny && !showPicker && (
-        <p className="text-xs text-slate-600 italic">No active conditions.</p>
+        <p className="text-xs text-[var(--color-faint)] italic">No active conditions.</p>
       )}
 
       {showPicker && (
@@ -69,7 +69,7 @@ function ConditionsWidget({ character }: WidgetProps) {
               <button
                 key={cond}
                 onClick={() => addCondition(character.id, cond)}
-                className={`text-xs font-medium px-2.5 py-1 rounded-full opacity-60 hover:opacity-100 transition-opacity ${CONDITION_COLOR[cond] ?? 'bg-slate-600 text-slate-200'}`}
+                className={`text-xs font-medium px-2.5 py-1 rounded-full opacity-60 hover:opacity-100 transition-opacity ${CONDITION_COLOR[cond] ?? 'bg-[var(--color-raised)] text-[var(--color-text)]'}`}
               >
                 {cond}
               </button>

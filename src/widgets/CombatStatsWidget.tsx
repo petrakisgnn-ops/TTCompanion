@@ -31,9 +31,9 @@ function CombatStatsWidget({ instance, character }: WidgetProps) {
   return (
     <div className="grid grid-cols-4 gap-2 p-3">
       {stats.map(s => (
-        <div key={s.label} className="bg-slate-700/50 rounded-xl flex flex-col items-center py-2.5 gap-0.5">
+        <div key={s.label} className="bg-[var(--color-card-inner)] rounded-xl flex flex-col items-center py-2.5 gap-0.5">
           <span className="text-lg font-bold leading-none">{s.value}</span>
-          <span className="text-xs text-slate-500 text-center leading-tight mt-1">{s.label}</span>
+          <span className="text-xs text-[var(--color-muted)] text-center leading-tight mt-1">{s.label}</span>
         </div>
       ))}
     </div>

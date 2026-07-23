@@ -34,13 +34,13 @@ function EquippedItemsWidget({ character }: WidgetProps) {
   if (equipped.length === 0) {
     return (
       <div className="p-3 flex items-center justify-center min-h-[3rem]">
-        <p className="text-xs text-slate-600 italic">Nothing equipped.</p>
+        <p className="text-xs text-[var(--color-faint)] italic">Nothing equipped.</p>
       </div>
     );
   }
 
   return (
-    <div className="divide-y divide-white/5">
+    <div className="divide-y divide-[var(--color-border)]">
       {equipped.map(inv => {
         const key = `${inv.itemRef.name}|${inv.itemRef.source}`.toLowerCase();
         const item = resolved.get(key);
@@ -49,7 +49,7 @@ function EquippedItemsWidget({ character }: WidgetProps) {
           <button
             key={key}
             onClick={() => navigate(`/items/${encodeURIComponent(key)}`)}
-            className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-white/5 active:bg-white/10 transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-white/5 active:bg-[var(--color-raised)] transition-colors"
           >
             <span className="text-sm font-medium truncate">{inv.itemRef.name}</span>
             {rarity && rarity !== 'none' && RARITY_COLOR[rarity] && (

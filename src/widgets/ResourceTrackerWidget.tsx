@@ -13,7 +13,7 @@ function ResourceTrackerWidget({ instance, character }: WidgetProps) {
 
   if (!resource) {
     return (
-      <div className="p-3 text-slate-600 text-xs text-center">
+      <div className="p-3 text-[var(--color-faint)] text-xs text-center">
         Resource not found
       </div>
     );
@@ -27,7 +27,7 @@ function ResourceTrackerWidget({ instance, character }: WidgetProps) {
     <div className="p-3 space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold leading-tight">{resource.label}</span>
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-[var(--color-muted)]">
           {resource.current}/{resource.max}
         </span>
       </div>
@@ -36,7 +36,7 @@ function ResourceTrackerWidget({ instance, character }: WidgetProps) {
           <button
             onClick={() => spendResource(character.id, resource.id)}
             disabled={resource.current <= 0}
-            className="w-9 h-9 rounded-lg bg-slate-700 font-bold text-lg hover:bg-slate-600 disabled:opacity-30 flex items-center justify-center"
+            className="w-9 h-9 rounded-lg bg-[var(--color-raised)] font-bold text-lg hover:bg-[var(--color-card-inner)] disabled:opacity-30 flex items-center justify-center"
           >
             −
           </button>
@@ -44,7 +44,7 @@ function ResourceTrackerWidget({ instance, character }: WidgetProps) {
           <button
             onClick={() => restoreResource(character.id, resource.id)}
             disabled={resource.current >= resource.max}
-            className="w-9 h-9 rounded-lg bg-slate-700 font-bold text-lg hover:bg-slate-600 disabled:opacity-30 flex items-center justify-center"
+            className="w-9 h-9 rounded-lg bg-[var(--color-raised)] font-bold text-lg hover:bg-[var(--color-card-inner)] disabled:opacity-30 flex items-center justify-center"
           >
             +
           </button>
@@ -64,14 +64,14 @@ function ResourceTrackerWidget({ instance, character }: WidgetProps) {
                 className={`w-7 h-7 rounded-md border-2 transition-colors ${
                   filled
                     ? 'bg-amber-500 border-amber-500'
-                    : 'border-slate-600 hover:border-amber-600'
+                    : 'border-[var(--color-border)] hover:border-amber-600'
                 }`}
               />
             );
           })}
         </div>
       )}
-      <p className="text-xs text-slate-600">
+      <p className="text-xs text-[var(--color-faint)]">
         Resets on {resource.resetOn === 'shortRest' ? 'short rest' : 'long rest'}
       </p>
     </div>
