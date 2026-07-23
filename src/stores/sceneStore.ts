@@ -40,6 +40,23 @@ export const useSceneStore = create<SceneStore>()((set, get) => {
     set({ scene });
   };
 
+  // Re-sort the turn order by initiative, highest first, whenever a value is entered during combat.
+  // A stable sort preserves the current relative order among ties and unset entries, so a manual
+  // drag survives until the next initiative is applied. No-op outside combat.
+  const resortByInitiative = (scene: SceneState): string[] => {
+    if (!scene.combatActive) return scene.turnOrder;
+    const initOf = (id: string): number => {
+      const npc = scene.deployed.find(d => d.id === id);
+      if (npc) return npc.initiative ?? Number.NEGATIVE_INFINITY;
+      return scene.pcMeta[id]?.initiative ?? Number.NEGATIVE_INFINITY;
+    };
+    return [...scene.turnOrder].sort((a, b) => {
+      const ia = initOf(a);
+      const ib = initOf(b);
+      return ia === ib ? 0 : ib - ia;
+    });
+  };
+
   return {
     scene: emptySceneState(),
     loaded: false,
@@ -137,13 +154,15 @@ export const useSceneStore = create<SceneStore>()((set, get) => {
     setPcInitiative: async (characterId, value) => {
       const { scene } = get();
       const pcMeta = { ...scene.pcMeta, [characterId]: { initiative: value } };
-      await persist({ ...scene, pcMeta });
+      const next = { ...scene, pcMeta };
+      await persist({ ...next, turnOrder: resortByInitiative(next) });
     },
 
     setInstanceInitiative: async (id, value) => {
       const { scene } = get();
       const deployed = scene.deployed.map(d => d.id === id ? { ...d, initiative: value } : d);
-      await persist({ ...scene, deployed });
+      const next = { ...scene, deployed };
+      await persist({ ...next, turnOrder: resortByInitiative(next) });
     },
 
     startCombat: async (orderedIds) => {
