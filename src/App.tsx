@@ -36,6 +36,9 @@ import { DmHomePage }    from './features/dm/DmHomePage';
 import { NpcsPage }      from './features/dm/NpcsPage';
 import { NpcDetailPage } from './features/dm/NpcDetailPage';
 
+// Multiplayer session
+import { SessionPage }   from './features/session/SessionPage';
+
 function HomeRouter() {
   const { mode } = useModeStore();
   return mode === 'dm' ? <DmHomePage /> : <DashboardPage />;
@@ -92,6 +95,9 @@ function AppRoutes() {
         {/* DM mode — NPCs / Settings */}
         <Route path="npcs"           element={<NpcsPage />} />
         <Route path="npcs/:npcId"    element={<NpcDetailPage />} />
+
+        {/* Multiplayer session lobby */}
+        <Route path="session"   element={<SessionPage />} />
 
         {/* Tools + Settings */}
         <Route path="tools"     element={<ToolsPage />} />

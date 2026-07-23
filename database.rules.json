@@ -1,0 +1,15 @@
+{
+  "rules": {
+    "lobbies": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.child('dmUid').val() === auth.uid) || (data.exists() && data.child('dmUid').val() === auth.uid))",
+        "players": {
+          "$uid": {
+            ".write": "auth != null && $uid === auth.uid"
+          }
+        }
+      }
+    }
+  }
+}

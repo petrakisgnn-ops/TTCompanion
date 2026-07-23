@@ -15,6 +15,7 @@ import { RosterRow } from './RosterRow';
 import { CombatBar } from './CombatBar';
 import { AddNpcSheet } from './AddNpcSheet';
 import { SessionNotesPanel } from './SessionNotesPanel';
+import { DmLobbyBanner } from '../session/DmLobbyBanner';
 import { Sheet } from '../../ui/Sheet';
 
 type RowProps = Omit<React.ComponentProps<typeof RosterRow>, 'view' | 'dragHandle'>;
@@ -112,6 +113,8 @@ export function DmHomePage() {
           <span className="msym" style={{ fontSize: 18 }}>edit_note</span>
         </button>
       </div>
+
+      <DmLobbyBanner />
 
       <div style={{ display: 'flex', gap: 4, background: 'var(--color-card-inner)', border: '1px solid var(--color-border)', borderRadius: 13, padding: 4 }}>
         <button onClick={() => scene.combatActive && endCombat()} style={segBtn(!scene.combatActive)}>Explore</button>
