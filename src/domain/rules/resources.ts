@@ -1,5 +1,6 @@
 import type { AbilityScores, ResourceTrack } from '../character/types';
 import type { RefId } from '../reference/types';
+import type { Edition } from './edition';
 import { getClassData, getSubclassCaster, type ClassData } from './classData';
 import { computeSpellSlots, computeMulticlassSpellSlots, type EffectiveCasting } from './spellSlots';
 import { computeClassResources, CLASS_RESOURCE_IDS } from './classResources';
@@ -29,6 +30,7 @@ export function recomputeAllResources(
   classes: { classRef: RefId; level: number; subclass?: RefId }[],
   previousResources: ResourceTrack[],
   abilityScores: AbilityScores,
+  edition: Edition = '5e',
 ): ResourceTrack[] {
   const resolved: { cl: typeof classes[number]; data: ClassData; casting: EffectiveCasting }[] = [];
   for (const cl of classes) {
@@ -39,7 +41,7 @@ export function recomputeAllResources(
   const slotContributors = resolved.filter(r => r.casting !== 'none' && r.casting !== 'pact');
   const managed: ResourceTrack[] =
     slotContributors.length === 1
-      ? computeSpellSlots(slotContributors[0].casting, slotContributors[0].cl.level)
+      ? computeSpellSlots(slotContributors[0].casting, slotContributors[0].cl.level, edition)
       : computeMulticlassSpellSlots(
           slotContributors.map(({ cl, casting }) => ({ classRef: cl.classRef, level: cl.level, spellcasting: casting })),
         );
@@ -49,7 +51,7 @@ export function recomputeAllResources(
     if (data.spellcasting === 'pact') {
       managed.push(...computeSpellSlots('pact', cl.level));
     }
-    managed.push(...computeClassResources(data.name, cl.level, abilityScores));
+    managed.push(...computeClassResources(data.name, cl.level, abilityScores, edition));
     for (const id of CLASS_RESOURCE_IDS[data.name] ?? []) ownedIds.add(id);
   }
 

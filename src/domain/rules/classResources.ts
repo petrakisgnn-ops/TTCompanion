@@ -1,4 +1,5 @@
 import type { AbilityScores, ResourceTrack } from '../character/types';
+import type { Edition } from './edition';
 import { abilityMod } from './index';
 
 /**
@@ -34,11 +35,13 @@ const track = (id: string, label: string, max: number, resetOn: ResourceTrack['r
   max > 0 ? [{ id, label, current: max, max, resetOn }] : [];
 
 /** Computes the non-spell resource pools a class grants at a given level (see classResources plan for the PHB rule behind each). */
-export function computeClassResources(className: string, level: number, abilityScores: AbilityScores): ResourceTrack[] {
+export function computeClassResources(className: string, level: number, abilityScores: AbilityScores, edition: Edition = '5e'): ResourceTrack[] {
+  const is2024 = edition === '5.5e';
   switch (className) {
     case 'Barbarian': {
-      if (level >= 20) return []; // Unlimited — nothing to track
-      const max = RAGE_USES[Math.min(level, 19) - 1] ?? 0;
+      // 2014: Rage is Unlimited at level 20 (untracked). 2024: a tracked 6 uses at level 20.
+      if (!is2024 && level >= 20) return [];
+      const max = RAGE_USES[Math.min(level, 19) - 1] ?? 0; // level 20 → index 18 = 6
       return track('rage', 'Rage', max, 'longRest');
     }
     case 'Bard': {
@@ -48,8 +51,8 @@ export function computeClassResources(className: string, level: number, abilityS
       return track('bardic-inspiration', 'Bardic Inspiration', max, level >= 5 ? 'shortRest' : 'longRest');
     }
     case 'Cleric': {
-      // Channel Divinity: 1/rest at 2, 2/rest at 6, 3/rest at 18.
-      const max = thresholdUses(level, [[2, 1], [6, 2], [18, 3]]);
+      // Channel Divinity — 2014: 1/2/3 at levels 2/6/18. 2024: 2/3/4 at 2/6/18.
+      const max = thresholdUses(level, is2024 ? [[2, 2], [6, 3], [18, 4]] : [[2, 1], [6, 2], [18, 3]]);
       return track('channel-divinity', 'Channel Divinity', max, 'shortRest');
     }
     case 'Druid': {
@@ -72,7 +75,8 @@ export function computeClassResources(className: string, level: number, abilityS
     }
     case 'Paladin': {
       const layOnHands = track('lay-on-hands', 'Lay on Hands', level * 5, 'longRest');
-      const channelDivinityMax = thresholdUses(level, [[3, 1]]); // Paladin doesn't scale past 1, unlike Cleric
+      // Channel Divinity — 2014: 1 from level 3 (never scales). 2024: 2 from level 3, 3 from level 11.
+      const channelDivinityMax = thresholdUses(level, is2024 ? [[3, 2], [11, 3]] : [[3, 1]]);
       const channelDivinity = track('channel-divinity', 'Channel Divinity', channelDivinityMax, 'shortRest');
       return [...layOnHands, ...channelDivinity];
     }

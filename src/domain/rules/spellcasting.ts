@@ -1,4 +1,5 @@
 import type { Character } from '../character/types';
+import type { Edition } from './edition';
 import { getClassData, getSubclassCaster } from './classData';
 
 /**
@@ -68,15 +69,38 @@ export const LEVEL_LABEL = ['Cantrip', '1st', '2nd', '3rd', '4th', '5th', '6th',
  */
 const PREPARED_CASTER_CLASSES = new Set(['cleric', 'druid', 'paladin', 'artificer', 'wizard']);
 
-export function isPreparedCaster(className: string): boolean {
+/**
+ * 2024 makes every caster a *prepared* caster with a fixed "Prepared Spells" count from its class
+ * table (no longer level + ability mod, and the old known-lists are gone). XPHB `Prepared Spells`
+ * columns, index 0 = level 1.
+ */
+const PREPARED_2024: Record<string, readonly number[]> = {
+  bard:      [4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 17, 18, 18, 19, 20, 21, 22],
+  cleric:    [4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 17, 18, 18, 19, 20, 21, 22],
+  druid:     [4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 17, 18, 18, 19, 20, 21, 22],
+  sorcerer:  [2, 4, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 17, 18, 18, 19, 20, 21, 22],
+  wizard:    [4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 18, 19, 21, 22, 23, 24, 25],
+  warlock:   [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15],
+  paladin:   [2, 3, 4, 5, 6, 6, 7, 7, 9, 9, 10, 10, 11, 11, 12, 12, 14, 14, 15, 15],
+  ranger:    [2, 3, 4, 5, 6, 6, 7, 7, 9, 9, 10, 10, 11, 11, 12, 12, 14, 14, 15, 15],
+  artificer: [2, 3, 4, 5, 6, 6, 7, 7, 9, 9, 10, 10, 11, 11, 12, 12, 14, 14, 15, 15],
+};
+
+export function isPreparedCaster(className: string, edition: Edition = '5e'): boolean {
+  // 2024: every caster prepares; 2014: only the classic prepared-list casters.
+  if (edition === '5.5e') return className.toLowerCase() in PREPARED_2024;
   return PREPARED_CASTER_CLASSES.has(className.toLowerCase());
 }
 
 /**
- * PHB prepared-spell caps: Cleric/Druid/Wizard = class level + ability mod;
- * Paladin/Artificer = half class level (rounded down) + ability mod. Always at least 1.
+ * Prepared-spell cap. 2014: class level (or half for Paladin/Artificer) + ability mod, min 1.
+ * 2024: the flat "Prepared Spells" table value (ability mod no longer factors in).
  */
-export function maxPreparedSpells(className: string, classLevel: number, abilityMod: number): number {
+export function maxPreparedSpells(className: string, classLevel: number, abilityMod: number, edition: Edition = '5e'): number {
+  if (edition === '5.5e') {
+    const table = PREPARED_2024[className.toLowerCase()];
+    if (table) return table[Math.min(Math.max(classLevel, 1), 20) - 1];
+  }
   const half = ['paladin', 'artificer'].includes(className.toLowerCase());
   const levelPart = half ? Math.floor(classLevel / 2) : classLevel;
   return Math.max(1, levelPart + abilityMod);
@@ -87,11 +111,11 @@ export function maxPreparedSpells(className: string, classLevel: number, ability
  * prep) — including subclass casters (Eldritch Knight / Arcane Trickster), who learn
  * from the Wizard list but never prepare.
  */
-export function isKnownCaster(className: string, subclassName?: string): boolean {
+export function isKnownCaster(className: string, subclassName?: string, edition: Edition = '5e'): boolean {
   const classData = getClassData(className);
   if (!classData) return false;
   if (classData.spellcasting === 'none') return !!getSubclassCaster(subclassName);
-  return !isPreparedCaster(className);
+  return !isPreparedCaster(className, edition);
 }
 
 // Wizard's spellbook grows by a fixed amount per level (starts with 6, then +2/level),
@@ -121,10 +145,10 @@ export function maxKnownSpells(className: string, classLevel: number, subclassNa
  * level they gain spellcasting (Paladin/Ranger level 1). Used to decide whether the creation
  * wizard shows a Spells step.
  */
-export function classHasSpellChoices(className: string, classLevel: number, subclassName?: string): boolean {
+export function classHasSpellChoices(className: string, classLevel: number, subclassName?: string, edition: Edition = '5e'): boolean {
   if (maxKnownCantrips(className, classLevel, subclassName) > 0) return true;
   if (maxSpellLevelForClass(className, classLevel, subclassName) < 1) return false;
-  if (isPreparedCaster(className)) return true;
+  if (isPreparedCaster(className, edition)) return true;
   return maxKnownSpells(className, classLevel, subclassName) > 0;
 }
 

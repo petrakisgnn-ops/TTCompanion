@@ -5,9 +5,13 @@ import { ALL_TOOLS, parseToolGrant, type ToolGrant } from '../../../domain/rules
 import { parseSkillGrant, type SkillGrant } from '../../../domain/rules/skillGrants';
 import { expertiseCount } from '../../../domain/rules/expertise';
 import { parseFeatProficiencies, EMPTY_FEAT_PROF_SELECTION } from '../../../domain/rules/featRewards';
+import { matchesEdition } from '../../../domain/rules/edition';
+import { useSettingsStore } from '../../../stores/settingsStore';
 import { buildRaceOptions, type RawRace, type RawSubrace } from '../../../domain/reference/races';
-import { parseBonusSkillAndFeatGrant } from '../../../domain/rules/raceGrants';
+import { parseBonusSkillAndFeatGrant, parseRaceFeatGrant } from '../../../domain/rules/raceGrants';
+import { featCategory } from '../../../domain/rules/featCategory';
 import { ClassOptionsPicker } from './ClassOptionsPicker';
+import { WeaponMasteryPicker } from './WeaponMasteryPicker';
 import { FeatProficiencyPicker } from '../FeatProficiencyPicker';
 import type { WizardData } from './CharacterWizard';
 
@@ -35,6 +39,8 @@ const EMPTY_SKILL_GRANT: SkillGrant = { fixed: [], choiceCount: 0, choiceFrom: [
 interface FeatEntry {
   name: string;
   source: string;
+  reprintedAs?: unknown;
+  category?: string;
   skillProficiencies?: unknown;
   toolProficiencies?: unknown;
   languageProficiencies?: unknown;
@@ -43,6 +49,7 @@ interface FeatEntry {
 }
 
 export function StepSkills({ data, patch }: StepSkillsProps) {
+  const edition = useSettingsStore(s => s.edition);
   const [bgSkills, setBgSkills] = useState<string[]>([]);
   const [bgSkillGrant, setBgSkillGrant] = useState<SkillGrant>(EMPTY_SKILL_GRANT);
   const [bgLangGrant, setBgLangGrant] = useState<LanguageGrant>({ fixed: [], choiceCount: 0 });
@@ -52,6 +59,8 @@ export function StepSkills({ data, patch }: StepSkillsProps) {
 
   // Race/subrace bonus skill + feat (e.g. Variant Human) — shape-detected, see raceGrants.ts
   const [bonusGrant, setBonusGrant] = useState({ grantsSkill: false, grantsFeat: false });
+  // A 2024 species Origin-feat grant restricts the bonus feat to a category (e.g. Human → "O").
+  const [raceFeatCategory, setRaceFeatCategory] = useState<string | null>(null);
   const [subraceLabel, setSubraceLabel] = useState('');
   const [allFeats, setAllFeats] = useState<FeatEntry[]>([]);
   const [featQuery, setFeatQuery] = useState('');
@@ -104,7 +113,7 @@ export function StepSkills({ data, patch }: StepSkillsProps) {
 
   // Race/subrace bonus skill + feat (e.g. Variant Human) — detected by trait shape, not name
   useEffect(() => {
-    if (!data.raceRef) { setBonusGrant({ grantsSkill: false, grantsFeat: false }); setSubraceLabel(''); return; }
+    if (!data.raceRef) { setBonusGrant({ grantsSkill: false, grantsFeat: false }); setRaceFeatCategory(null); setSubraceLabel(''); return; }
     fetch(`${import.meta.env.BASE_URL}data/races.json`)
       .then(r => r.json())
       .then((json: { race: RawRace[]; subrace: RawSubrace[] }) => {
@@ -114,16 +123,18 @@ export function StepSkills({ data, patch }: StepSkillsProps) {
           : options.find(o => !o.subraceName && o.raceName === data.raceRef!.name && o.raceSource === data.raceRef!.source);
         setSubraceLabel(opt?.name ?? '');
         setBonusGrant(opt ? parseBonusSkillAndFeatGrant(opt.entries) : { grantsSkill: false, grantsFeat: false });
+        setRaceFeatCategory(opt ? parseRaceFeatGrant(opt.feats)?.category ?? null : null);
       });
   }, [data.raceRef?.name, data.raceRef?.source, data.subraceRef?.name, data.subraceRef?.source]);
 
-  // Feat catalog for the bonus-feat picker, fetched once
+  // Feat catalog for the bonus-feat picker (2014 Variant Human "any feat" or a 2024 species Origin feat), fetched once
+  const needsFeatCatalog = bonusGrant.grantsFeat || raceFeatCategory !== null;
   useEffect(() => {
-    if (!bonusGrant.grantsFeat || allFeats.length > 0) return;
+    if (!needsFeatCatalog || allFeats.length > 0) return;
     fetch(`${import.meta.env.BASE_URL}data/feats.json`)
       .then(r => r.json())
       .then((json: { feat: FeatEntry[] }) => setAllFeats(json.feat));
-  }, [bonusGrant.grantsFeat, allFeats.length]);
+  }, [needsFeatCatalog, allFeats.length]);
 
   // Debounced feat search
   useEffect(() => {
@@ -131,10 +142,15 @@ export function StepSkills({ data, patch }: StepSkillsProps) {
     if (!featQuery.trim()) { setFeatResults([]); return; }
     featTimer.current = setTimeout(() => {
       const q = featQuery.toLowerCase();
-      setFeatResults(allFeats.filter(f => f.name.toLowerCase().includes(q)).slice(0, 10));
+      setFeatResults(allFeats.filter(f =>
+        f.name.toLowerCase().includes(q) &&
+        matchesEdition(f.source, f.reprintedAs, edition) &&
+        // A 2024 species Origin-feat grant restricts the pick to that category.
+        (!raceFeatCategory || featCategory(f.category) === featCategory(raceFeatCategory)),
+      ).slice(0, 10));
     }, 150);
     return () => { if (featTimer.current) clearTimeout(featTimer.current); };
-  }, [featQuery, allFeats]);
+  }, [featQuery, allFeats, edition, raceFeatCategory]);
 
   const langGrant = mergeLanguageGrants(raceLangGrant, bgLangGrant);
 
@@ -446,8 +462,8 @@ export function StepSkills({ data, patch }: StepSkillsProps) {
         </div>
       )}
 
-      {/* Race/subrace bonus skill + feat (e.g. Variant Human) */}
-      {(bonusGrant.grantsSkill || bonusGrant.grantsFeat) && (
+      {/* Race/subrace bonus skill + feat (2014 Variant Human "any feat", or a 2024 species Origin feat) */}
+      {(bonusGrant.grantsSkill || bonusGrant.grantsFeat || raceFeatCategory) && (
         <div className="space-y-3">
           <h2 className="text-base font-semibold">From {subraceLabel}</h2>
 
@@ -481,10 +497,10 @@ export function StepSkills({ data, patch }: StepSkillsProps) {
             </div>
           )}
 
-          {bonusGrant.grantsFeat && (
+          {(bonusGrant.grantsFeat || raceFeatCategory) && (
             <div>
               <p className="text-xs text-[var(--color-faint)] mb-1.5 uppercase tracking-wide font-semibold">
-                Choose 1 bonus feat
+                {featCategory(raceFeatCategory ?? undefined) === 'origin' ? 'Choose 1 Origin feat' : 'Choose 1 bonus feat'}
               </p>
               {data.raceBonusFeat ? (
                 <div className="space-y-2">
@@ -688,6 +704,9 @@ export function StepSkills({ data, patch }: StepSkillsProps) {
 
       {/* Class/subclass option-choices (Fighting Style, Invocations, Elemental Disciplines, …) */}
       <ClassOptionsPicker data={data} patch={patch} />
+
+      {/* 2024 Weapon Mastery — choose N weapons (martials only) */}
+      <WeaponMasteryPicker data={data} patch={patch} />
     </div>
   );
 }

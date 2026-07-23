@@ -99,6 +99,31 @@ describe('renderEntry', () => {
     expect(container).toHaveTextContent('Item two');
   });
 
+  it('renders a labelled item node with both its name and entry value', () => {
+    const { container } = render(
+      <>{renderEntry({ type: 'item', name: 'Skill Proficiencies:', entry: '{@skill Stealth}, {@skill Sleight of Hand}' }, 'k0')}</>,
+    );
+    expect(container).toHaveTextContent('Skill Proficiencies:');
+    expect(container).toHaveTextContent('Stealth');
+    expect(container).toHaveTextContent('Sleight of Hand');
+  });
+
+  it('renders a hanging list of labelled items (background proficiencies/equipment)', () => {
+    const { container } = render(
+      <>{renderEntry({
+        type: 'list',
+        items: [
+          { type: 'item', name: 'Tool Proficiencies:', entry: "{@item Disguise kit|phb}" },
+          { type: 'item', name: 'Equipment:', entry: 'A small knife and 10 gp' },
+        ],
+      }, 'k0')}</>,
+    );
+    expect(container).toHaveTextContent('Tool Proficiencies:');
+    expect(container).toHaveTextContent('Disguise kit');
+    expect(container).toHaveTextContent('Equipment:');
+    expect(container).toHaveTextContent('A small knife and 10 gp');
+  });
+
   it('renders a table node with headers and rows', () => {
     const { container } = render(
       <>

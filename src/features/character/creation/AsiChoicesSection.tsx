@@ -4,7 +4,10 @@ import { parseFeatAbility, type FeatAbilityGrant } from '../../../domain/rules/f
 import {
   parseFeatProficiencies, featProfChoicesComplete, type FeatProficiencies,
 } from '../../../domain/rules/featRewards';
+import { isAsiFeatEligible } from '../../../domain/rules/featCategory';
+import { matchesEdition } from '../../../domain/rules/edition';
 import { asiLevelsUpTo, type AbilityKey } from '../../../domain/rules/classData';
+import { useSettingsStore } from '../../../stores/settingsStore';
 import { FeatProficiencyPicker } from '../FeatProficiencyPicker';
 import { BLANK_ASI_CHOICE, type AsiChoice, type WizardData } from './CharacterWizard';
 
@@ -18,6 +21,8 @@ interface FeatEntry {
   languageProficiencies?: unknown;
   expertise?: unknown;
   skillToolLanguageProficiencies?: unknown;
+  category?: string;
+  reprintedAs?: unknown;
 }
 
 const ABILITY_KEYS: AbilityKey[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
@@ -55,6 +60,7 @@ function resolveChoice(choice: AsiChoice, grant: FeatAbilityGrant | null, prof: 
 }
 
 export function AsiChoicesSection({ className, level, data, patch }: Props) {
+  const edition = useSettingsStore(s => s.edition);
   const slotLevels = useMemo(() => asiLevelsUpTo(className, level), [className, level]);
   const [allFeats, setAllFeats] = useState<FeatEntry[]>([]);
   const [featQuery, setFeatQuery] = useState<Record<number, string>>({});
@@ -130,7 +136,10 @@ export function AsiChoicesSection({ className, level, data, patch }: Props) {
         const key = `${f.name}|${f.source}`.toLowerCase();
         return f.name.toLowerCase().includes(q) &&
           f.name.toLowerCase() !== 'ability score improvement' &&
-          (!takenFeatKeys.has(key) || key === selfKey);
+          (!takenFeatKeys.has(key) || key === selfKey) &&
+          // Show feats of the chosen edition, and in 2024 only General feats gated by this slot's level.
+          matchesEdition(f.source, f.reprintedAs, edition) &&
+          isAsiFeatEligible(f, slotLevels[i], edition);
       })
       .slice(0, 8);
   };

@@ -56,7 +56,9 @@ export function AddClassSheet({ character, onClose }: AddClassSheetProps) {
   const [chosenSubclass, setChosenSubclass] = useState<RefId | null>(null);
   const [chosenSkill, setChosenSkill] = useState<string | null>(null);
 
-  const needsSubclassNow = selected ? subclassLevel(selected.name) === 1 : false;
+  // Multiclassing in adds the class at its level 1, so a subclass is only needed immediately when
+  // that class picks one at level 1 — true for a few 2014 classes, never in 2024 (subclass @3).
+  const needsSubclassNow = selected ? subclassLevel(selected.name, character.edition) === 1 : false;
 
   useEffect(() => {
     setChosenSubclass(null);

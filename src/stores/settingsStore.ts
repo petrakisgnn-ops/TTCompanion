@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { Edition } from '../domain/rules/edition';
 
-export type Edition = '5e' | '5.5e';
-export type Theme   = 'dark' | 'light';
+export type { Edition };
+export type Theme = 'dark' | 'light';
 
 interface SettingsStore {
   edition: Edition;

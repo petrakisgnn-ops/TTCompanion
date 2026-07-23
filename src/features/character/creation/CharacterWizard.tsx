@@ -6,7 +6,7 @@ import { maxHp } from '../../../domain/rules/spellSlots';
 import { recomputeAllResources } from '../../../domain/rules/resources';
 import { hpBonusPerLevel } from '../../../domain/rules/hpBonus';
 import { abilityMod } from '../../../domain/rules';
-import { getClassData, subclassLevel, asiLevelsUpTo, type AbilityKey } from '../../../domain/rules/classData';
+import { getClassData, subclassLevel, asiLevelsUpTo, weaponMasteryCount, type AbilityKey } from '../../../domain/rules/classData';
 import { classHasSpellChoices } from '../../../domain/rules/spellcasting';
 import {
   parseFeatProficiencies, resolveFeatProficiencies,
@@ -14,6 +14,7 @@ import {
 } from '../../../domain/rules/featRewards';
 import { CLASS_SKILLS } from '../../../domain/rules/classSkills';
 import { useCharacterStore } from '../../../stores/characterStore';
+import { useSettingsStore } from '../../../stores/settingsStore';
 import { StepRace } from './StepRace';
 import { StepClass } from './StepClass';
 import { StepAbilities } from './StepAbilities';
@@ -93,6 +94,8 @@ export interface WizardData {
   asiChoices: AsiChoice[];
   /** Class/subclass option-choices (Fighting Style, Invocations, Elemental Disciplines, …) — see ClassOptionsPicker. */
   optionalFeatures: RefId[];
+  /** Weapons chosen for 2024 Weapon Mastery — see WeaponMasteryPicker. */
+  masteredWeapons: RefId[];
   /** Spells learned (known casters + Wizard spellbook + cantrips) — see StepSpells. */
   knownSpells: KnownSpellRef[];
   /** Spells prepared (Cleric/Druid/Paladin/Artificer/Wizard) — see StepSpells. */
@@ -213,6 +216,8 @@ async function resolveFeatProfGrants(picks: { feat: RefId; sel: FeatProfSelectio
 export function CharacterWizard() {
   const navigate = useNavigate();
   const createCharacter = useCharacterStore(s => s.create);
+  // A new character inherits the current global edition and stores it (sticky thereafter).
+  const edition = useSettingsStore(s => s.edition);
   const [step, setStep] = useState(0);
   const [data, setData] = useState<WizardData>({
     raceRef: null,
@@ -234,6 +239,7 @@ export function CharacterWizard() {
     raceSkillChoices: [],
     asiChoices: [],
     optionalFeatures: [],
+    masteredWeapons: [],
     knownSpells: [],
     preparedSpells: [],
     resolvedInventory: [],
@@ -257,12 +263,12 @@ export function CharacterWizard() {
     setData(d => ({ ...d, ...partial }));
 
   // The subclass, only once the creation level has reached the level it's chosen at.
-  const activeSubclassName = data.classRef && data.subclassRef && data.level >= subclassLevel(data.classRef.name)
+  const activeSubclassName = data.classRef && data.subclassRef && data.level >= subclassLevel(data.classRef.name, edition)
     ? data.subclassRef.name
     : undefined;
   // Insert a Spells step (after Skills) only for classes that actually pick spells at this level.
   const hasSpellsStep = data.classRef
-    ? classHasSpellChoices(data.classRef.name, data.level, activeSubclassName)
+    ? classHasSpellChoices(data.classRef.name, data.level, activeSubclassName, edition)
     : false;
   const steps = useMemo<StepName[]>(() => {
     if (!hasSpellsStep) return [...BASE_STEPS];
@@ -279,7 +285,7 @@ export function CharacterWizard() {
         if (data.classRef === null) return false;
         // A subclass is required whenever the creation level has already reached the
         // class's subclass level (always true for Cleric/Sorcerer/Warlock at 1).
-        if (data.level >= subclassLevel(data.classRef.name)) return data.subclassRef !== null;
+        if (data.level >= subclassLevel(data.classRef.name, edition)) return data.subclassRef !== null;
         return true;
       }
       case 'Background': return data.backgroundRef !== null;
@@ -308,7 +314,7 @@ export function CharacterWizard() {
     const {
       raceRef, subraceRef, classRef, subclassRef, level, backgroundRef,
       skills, expertise, languages, tools, raceBonusFeat, raceBonusFeatProfSel, asiChoices, optionalFeatures,
-      knownSpells, preparedSpells,
+      masteredWeapons, knownSpells, preparedSpells,
       resolvedInventory, resolvedCurrency, equipmentNotes,
       alignment, personalityTrait, personalityIdeal, personalityBond, personalityFlaw,
       age, height, weight, eyes, skin, hair, name,
@@ -343,7 +349,7 @@ export function CharacterWizard() {
     // Real final scores: base + racial/background bonus + earned ASI/feat boosts (capped at 20).
     const finalScores = resolveFinalScores(data);
 
-    const finalSubclass = subclassRef && level >= subclassLevel(classRef.name) ? subclassRef : undefined;
+    const finalSubclass = subclassRef && level >= subclassLevel(classRef.name, edition) ? subclassRef : undefined;
 
     const cls = getClassData(classRef.name);
     const conMod = abilityMod(finalScores.con);
@@ -363,11 +369,13 @@ export function CharacterWizard() {
       [{ classRef, level, subclass: finalSubclass }],
       [],
       finalScores,
+      edition,
     );
 
     const character: Character = {
       id: crypto.randomUUID(),
       name: name.trim(),
+      edition,
       // finalSubclass drops a lingering pick if the level was lowered back below the
       // class's subclass level after choosing one.
       classes: [{ classRef, level, subclass: finalSubclass }],
@@ -401,6 +409,8 @@ export function CharacterWizard() {
       knownSpells,
       preparedSpells,
       optionalFeatures,
+      // Keep only as many mastered weapons as the class/level actually grants.
+      masteredWeapons: masteredWeapons.slice(0, weaponMasteryCount(classRef.name, level, edition)),
       inventory: resolvedInventory,
       feats: grantedFeats,
       resources,
@@ -426,7 +436,13 @@ export function CharacterWizard() {
           >
             ← {step === 0 ? 'Cancel' : 'Back'}
           </button>
-          <span className="text-sm font-semibold">{stepName}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold">{stepName}</span>
+            {/* The character inherits the current global edition — shown here so it's clear which ruleset. */}
+            <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400">
+              {edition === '5.5e' ? '2024' : '2014'}
+            </span>
+          </div>
           <span className="text-xs text-[var(--color-faint)]">{step + 1} / {steps.length}</span>
         </div>
         {/* Progress dots */}

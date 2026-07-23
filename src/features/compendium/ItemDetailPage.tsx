@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../../data/db';
 import type { StoredItem } from '../../data/db';
 import { renderEntries } from '../../rendering';
+import { resolveItemMasteries, type ItemMastery } from './itemMasteryCache';
 
 const RARITY_COLOR: Record<string, string> = {
   none: 'text-slate-400',
@@ -50,6 +51,7 @@ export function ItemDetailPage() {
   const navigate = useNavigate();
   const [item, setItem] = useState<StoredItem | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [masteries, setMasteries] = useState<ItemMastery[]>([]);
 
   useEffect(() => {
     if (!key) return;
@@ -58,6 +60,15 @@ export function ItemDetailPage() {
       else setNotFound(true);
     });
   }, [key]);
+
+  // Resolve a weapon's mastery property (2024) — e.g. "Sap|XPHB" → what Sap does.
+  useEffect(() => {
+    const refs = item?.mastery as string[] | undefined;
+    if (!refs || refs.length === 0) { setMasteries([]); return; }
+    let cancelled = false;
+    resolveItemMasteries(refs).then(m => { if (!cancelled) setMasteries(m); });
+    return () => { cancelled = true; };
+  }, [item]);
 
   if (notFound) {
     return (
@@ -90,6 +101,8 @@ export function ItemDetailPage() {
   const weight = item.weight as number | undefined;
   const value = item.value as number | undefined;
   const ac = item.ac as number | undefined;
+  // Weapon mastery names come straight from the refs (["Sap|XPHB"] → "Sap"); descriptions load async.
+  const masteryNames = (item.mastery as string[] | undefined)?.map(r => r.split('|')[0]);
 
   return (
     <div className="p-4 max-w-xl mx-auto">
@@ -133,8 +146,26 @@ export function ItemDetailPage() {
               value={properties.map(p => PROPERTY[p] ?? p).join(', ')}
             />
           )}
+          {masteryNames && masteryNames.length > 0 && <MetaRow label="Mastery" value={masteryNames.join(', ')} />}
           {weight != null && <MetaRow label="Weight" value={`${weight} lb.`} />}
           {value != null && formatValue(value) && <MetaRow label="Value" value={formatValue(value)!} />}
+        </section>
+      )}
+
+      {/* Weapon mastery (2024) — what the mastery property does */}
+      {masteries.length > 0 && (
+        <section className="border border-amber-500/20 bg-amber-500/5 rounded-xl p-3 mb-4">
+          <h2 className="text-sm font-semibold text-amber-400 mb-1.5">Weapon Mastery</h2>
+          <div className="space-y-2">
+            {masteries.map(m => (
+              <div key={`${m.name}|${m.source}`}>
+                <p className="text-sm font-semibold">{m.name}</p>
+                {m.entries && (
+                  <div className="text-sm leading-relaxed text-slate-300">{renderEntries(m.entries)}</div>
+                )}
+              </div>
+            ))}
+          </div>
         </section>
       )}
 

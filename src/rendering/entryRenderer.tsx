@@ -57,6 +57,21 @@ function renderNode(node: EntryNode, key: string): ReactNode {
       );
     }
 
+    // A labelled list entry, e.g. a background's "Skill Proficiencies: {@skill …}". The label
+    // lives in `name`, the value in `entry` (a string) or occasionally `entries` (a block list).
+    case 'item':
+    case 'itemSub':
+      return (
+        <div key={key} className="mb-1">
+          {node.name && <span className="font-semibold">{node.name} </span>}
+          {node.entry != null
+            ? renderInline(node.entry)
+            : node.entries
+            ? renderEntries(node.entries, key)
+            : null}
+        </div>
+      );
+
     case 'table': {
       const labels = (node.colLabels ?? []) as string[];
       const rows = (node.rows ?? []) as Entry[][];

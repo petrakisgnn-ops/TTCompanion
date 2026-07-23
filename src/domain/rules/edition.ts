@@ -1,4 +1,5 @@
-import type { Edition } from '../../stores/settingsStore';
+/** The rules edition a character or piece of content follows. `5e` = 2014 PHB, `5.5e` = 2024 PHB. */
+export type Edition = '5e' | '5.5e';
 
 /** Sources that belong to the 2024 (5.5e / One D&D) core rules. */
 const SOURCES_2024 = new Set(['XPHB', 'XDMG', 'XMM']);

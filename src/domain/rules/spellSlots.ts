@@ -1,5 +1,6 @@
 import type { ResourceTrack } from '../character/types';
 import type { SpellcastingType } from './classData';
+import type { Edition } from './edition';
 
 // Standard full-caster slot progression [level 1–20][slot level 1–9]
 const FULL: readonly number[][] = [
@@ -48,6 +49,10 @@ const HALF: readonly number[][] = [
   [4, 3, 3, 3, 2],
   [4, 3, 3, 3, 2],
 ];
+
+// 2024 half-casters (Paladin/Ranger) gain Spellcasting at level 1 — one change from 2014, which
+// grants nothing until level 2. Levels 2–20 are identical, so reuse the 2014 rows from there.
+const HALF_2024: readonly number[][] = [[2, 0, 0, 0, 0], ...HALF.slice(1)];
 
 // Artificer — half-caster but rounds up (starts at level 1)
 const ARTIFICER: readonly number[][] = [
@@ -120,11 +125,12 @@ function slotsToTracks(slots: readonly number[]): ResourceTrack[] {
 export function computeSpellSlots(
   type: SpellcastingType | '1/3',
   level: number,
+  edition: Edition = '5e',
 ): ResourceTrack[] {
   const idx = Math.min(Math.max(level, 1), 20) - 1;
   switch (type) {
     case 'full':       return slotsToTracks(FULL[idx] ?? []);
-    case 'half':       return slotsToTracks(HALF[idx] ?? []);
+    case 'half':       return slotsToTracks((edition === '5.5e' ? HALF_2024 : HALF)[idx] ?? []);
     case 'artificer':  return slotsToTracks(ARTIFICER[idx] ?? []);
     case '1/3':        return slotsToTracks(THIRD[idx] ?? []);
     case 'pact': {

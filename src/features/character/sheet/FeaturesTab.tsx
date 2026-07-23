@@ -1,6 +1,7 @@
 import { CollapsibleFeature } from '../../../ui/CollapsibleFeature';
 import { useCharacterFeatures, type FeatureRow } from '../useCharacterFeatures';
 import { ClassOptionsSection } from './ClassOptionsSection';
+import { WeaponMasterySection } from './WeaponMasterySection';
 import type { Character } from '../../../domain/character/types';
 
 interface FeaturesTabProps { character: Character }
@@ -26,6 +27,7 @@ export function FeaturesTab({ character }: FeaturesTabProps) {
   return (
     <div className="space-y-5">
       <ClassOptionsSection character={character} />
+      <WeaponMasterySection character={character} />
       {groups.map(g => (
         <FeatureGroup key={g.title} title={g.title} features={g.features} />
       ))}

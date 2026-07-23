@@ -1,6 +1,31 @@
 import { describe, expect, it } from 'vitest';
 import { classHasSpellChoices, isKnownCaster, isPreparedCaster, maxKnownCantrips, maxKnownSpells, maxPreparedSpells, maxSpellLevelForClass } from './spellcasting';
 
+describe('isPreparedCaster by edition', () => {
+  it('2014: only the classic prepared-list casters (Bard/Sorcerer are known casters)', () => {
+    expect(isPreparedCaster('Cleric')).toBe(true);
+    expect(isPreparedCaster('Wizard')).toBe(true);
+    expect(isPreparedCaster('Bard')).toBe(false);
+    expect(isPreparedCaster('Sorcerer')).toBe(false);
+    expect(isPreparedCaster('Warlock')).toBe(false);
+  });
+
+  it('2024: every caster prepares (Bard/Sorcerer/Warlock switch to prepared)', () => {
+    for (const c of ['Bard', 'Cleric', 'Druid', 'Paladin', 'Ranger', 'Sorcerer', 'Warlock', 'Wizard']) {
+      expect(isPreparedCaster(c, '5.5e'), c).toBe(true);
+    }
+    expect(isPreparedCaster('Fighter', '5.5e')).toBe(false);
+  });
+});
+
+describe('maxPreparedSpells by edition', () => {
+  it('2014 Cleric = level + WIS mod (min 1); 2024 Cleric = flat table', () => {
+    expect(maxPreparedSpells('Cleric', 5, 3)).toBe(8);           // 2014: 5 + 3
+    expect(maxPreparedSpells('Cleric', 5, 3, '5.5e')).toBe(9);   // 2024 table @5
+    expect(maxPreparedSpells('Cleric', 1, 0, '5.5e')).toBe(4);   // ability mod ignored in 2024
+  });
+});
+
 describe('classHasSpellChoices (whether the creation wizard shows a Spells step)', () => {
   it('is false for non-casters at every level', () => {
     for (const cls of ['Barbarian', 'Fighter', 'Monk', 'Rogue']) {

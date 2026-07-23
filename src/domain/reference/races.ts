@@ -43,6 +43,8 @@ export interface RaceOption {
   raceAbility?: unknown;
   /** Raw `ability` block from the subrace record, if this option is a subrace. */
   subraceAbility?: unknown;
+  /** Raw `feats` grant (2024 species Origin-feat choice, e.g. Human's `anyFromCategory`). */
+  feats?: unknown;
 }
 
 /**
@@ -76,6 +78,7 @@ export function buildRaceOptions(races: RawRace[], subraces: RawSubrace[]): Race
       entries: race.entries ?? [],
       reprintedAs: race.reprintedAs,
       raceAbility: linkedAbility,
+      feats: race.feats,
     });
   }
 
@@ -112,6 +115,7 @@ export function buildRaceOptions(races: RawRace[], subraces: RawSubrace[]): Race
       reprintedAs: sub.reprintedAs,
       raceAbility: parentAbility,
       subraceAbility: sub.ability,
+      feats: sub.feats ?? parent.feats,
     });
   }
 

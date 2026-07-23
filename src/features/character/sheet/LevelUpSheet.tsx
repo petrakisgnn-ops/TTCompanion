@@ -12,6 +12,7 @@ import {
 } from '../../../domain/rules/featRewards';
 import { FeatProficiencyPicker } from '../FeatProficiencyPicker';
 import { hpBonusPerLevel } from '../../../domain/rules/hpBonus';
+import { isAsiFeatEligible } from '../../../domain/rules/featCategory';
 import { abilityMod, totalLevel } from '../../../domain/rules';
 
 interface RawSubclass { name: string; source: string; reprintedAs?: unknown }
@@ -26,6 +27,8 @@ interface FeatEntry {
   languageProficiencies?: unknown;
   expertise?: unknown;
   skillToolLanguageProficiencies?: unknown;
+  category?: string;
+  reprintedAs?: unknown;
 }
 
 function featPrereqLabel(prerequisite: unknown[] | undefined): string | null {
@@ -99,7 +102,7 @@ export function LevelUpSheet({ character, onClose }: LevelUpSheetProps) {
   const classData = getClassData(selectedClass.classRef.name);
   const newLevel = selectedClass.level + 1;
   const hasAsi = isAsiLevel(selectedClass.classRef.name, newLevel);
-  const subclassAt = subclassLevel(selectedClass.classRef.name);
+  const subclassAt = subclassLevel(selectedClass.classRef.name, character.edition);
   // >= not ===: a character created at (or leveled past) the subclass level without
   // picking one must still get the prompt on their next level-up, not be stuck forever.
   const picksSubclass = newLevel >= subclassAt && !selectedClass.subclass;
@@ -132,13 +135,16 @@ export function LevelUpSheet({ character, onClose }: LevelUpSheetProps) {
           .filter(f =>
             f.name.toLowerCase().includes(q) &&
             f.name.toLowerCase() !== 'ability score improvement' &&
-            !knownKeys.has(`${f.name}|${f.source}`.toLowerCase()),
+            !knownKeys.has(`${f.name}|${f.source}`.toLowerCase()) &&
+            // Show feats of the character's edition, and in 2024 only General feats (level-gated).
+            matchesEdition(f.source, f.reprintedAs, character.edition) &&
+            isAsiFeatEligible(f, level + 1, character.edition),
           )
           .slice(0, 10),
       );
     }, 150);
     return () => { if (featTimer.current) clearTimeout(featTimer.current); };
-  }, [featQuery, allFeats, character.feats]);
+  }, [featQuery, allFeats, character.feats, character.edition, level]);
 
   if (level >= 20) {
     return (

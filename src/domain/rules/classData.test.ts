@@ -20,7 +20,7 @@ describe('asiLevelsUpTo', () => {
   });
 });
 
-describe('subclassLevel', () => {
+describe('subclassLevel (2014, the default)', () => {
   it('is level 1 for Cleric, Sorcerer, and Warlock', () => {
     expect(subclassLevel('Cleric')).toBe(1);
     expect(subclassLevel('Sorcerer')).toBe(1);
@@ -35,6 +35,21 @@ describe('subclassLevel', () => {
   it('defaults to level 3 for every other class', () => {
     for (const cls of ['Bard', 'Fighter', 'Monk', 'Paladin', 'Ranger', 'Rogue', 'Barbarian', 'Artificer']) {
       expect(subclassLevel(cls)).toBe(3);
+    }
+  });
+
+  it('is unchanged when 5e is passed explicitly', () => {
+    expect(subclassLevel('Cleric', '5e')).toBe(1);
+    expect(subclassLevel('Wizard', '5e')).toBe(2);
+    expect(subclassLevel('Fighter', '5e')).toBe(3);
+  });
+});
+
+describe('subclassLevel (2024)', () => {
+  it('is level 3 for every class', () => {
+    for (const cls of ['Cleric', 'Sorcerer', 'Warlock', 'Wizard', 'Druid', 'Bard', 'Fighter',
+      'Monk', 'Paladin', 'Ranger', 'Rogue', 'Barbarian', 'Artificer']) {
+      expect(subclassLevel(cls, '5.5e')).toBe(3);
     }
   });
 });

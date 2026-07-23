@@ -7,6 +7,8 @@ import { recomputeAllResources } from '../../domain/rules/resources';
 function normalize(c: Character): Character {
   const withDefaults: Character = {
     ...c,
+    // Characters created before edition support are 2014 (5e).
+    edition: c.edition ?? '5e',
     proficiencies: { ...c.proficiencies, expertise: c.proficiencies?.expertise ?? [] },
     hitDiceSpent: c.hitDiceSpent ?? 0,
     deathSaves: c.deathSaves ?? { successes: 0, failures: 0 },
@@ -16,6 +18,7 @@ function normalize(c: Character): Character {
     knownSpells: c.knownSpells ?? [],
     preparedSpells: c.preparedSpells ?? [],
     optionalFeatures: c.optionalFeatures ?? [],
+    masteredWeapons: c.masteredWeapons ?? [],
     feats: c.feats ?? [],
     resources: c.resources ?? [],
     alignment: c.alignment ?? null,
@@ -29,7 +32,7 @@ function normalize(c: Character): Character {
   // untouched — see recomputeAllResources.
   return {
     ...withDefaults,
-    resources: recomputeAllResources(withDefaults.classes, withDefaults.resources, withDefaults.abilityScores),
+    resources: recomputeAllResources(withDefaults.classes, withDefaults.resources, withDefaults.abilityScores, withDefaults.edition),
   };
 }
 
@@ -49,7 +52,7 @@ export const dexieCharacterRepository: CharacterRepository = {
   },
 
   import: async (blob) => {
-    const c: Character = JSON.parse(blob) as Character;
+    const c = normalize(JSON.parse(blob) as Character);
     await db.characters.put(c);
     return c;
   },

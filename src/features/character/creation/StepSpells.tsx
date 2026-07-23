@@ -7,6 +7,7 @@ import { subclassLevel } from '../../../domain/rules/classData';
 import { resolveExpandedSpellRefs } from '../../../domain/rules/grantedSpells';
 import { SpellSelection } from '../SpellSelection';
 import { fetchSubclassGrantSources } from '../grantSourcesCache';
+import { useSettingsStore } from '../../../stores/settingsStore';
 
 interface StepSpellsProps {
   data: WizardData;
@@ -16,16 +17,18 @@ interface StepSpellsProps {
 const sameRef = (a: RefId, b: RefId) => a.name === b.name && a.source === b.source;
 
 export function StepSpells({ data, patch }: StepSpellsProps) {
+  const edition = useSettingsStore(s => s.edition);
   // A read-only Character built from the draft, so the shared SpellSelection/ClassSpellBrowser
   // can drive caps, pools and active state exactly as they do on the sheet.
   const character = useMemo<Character | null>(() => {
     if (!data.classRef) return null;
-    const subclass = data.subclassRef && data.level >= subclassLevel(data.classRef.name)
+    const subclass = data.subclassRef && data.level >= subclassLevel(data.classRef.name, edition)
       ? data.subclassRef
       : undefined;
     return {
       id: 'draft',
       name: data.name,
+      edition,
       classes: [{ classRef: data.classRef, level: data.level, subclass }],
       race: data.raceRef ?? { name: '', source: '' },
       subrace: data.subraceRef,
@@ -43,6 +46,7 @@ export function StepSpells({ data, patch }: StepSpellsProps) {
       knownSpells: data.knownSpells,
       preparedSpells: data.preparedSpells,
       optionalFeatures: [],
+      masteredWeapons: [],
       inventory: [],
       feats: [],
       resources: [],
@@ -50,13 +54,13 @@ export function StepSpells({ data, patch }: StepSpellsProps) {
       dashboard: { widgets: [] },
       notes: '',
     };
-  }, [data]);
+  }, [data, edition]);
 
   // Subclass expanded spell lists (Warlock patron, cleric domain, …), unioned into the pool.
   const [expandedByClass, setExpandedByClass] = useState<Record<string, RefId[]>>({});
   useEffect(() => {
     if (!data.classRef) { setExpandedByClass({}); return; }
-    const subclass = data.subclassRef && data.level >= subclassLevel(data.classRef.name)
+    const subclass = data.subclassRef && data.level >= subclassLevel(data.classRef.name, edition)
       ? data.subclassRef
       : undefined;
     if (!subclass) { setExpandedByClass({}); return; }
@@ -68,7 +72,7 @@ export function StepSpells({ data, patch }: StepSpellsProps) {
       if (!cancelled) setExpandedByClass(refs.length ? { [data.classRef!.name]: refs } : {});
     })();
     return () => { cancelled = true; };
-  }, [data.classRef?.name, data.subclassRef?.name, data.subclassRef?.source, data.level]);
+  }, [data.classRef?.name, data.subclassRef?.name, data.subclassRef?.source, data.level, edition]);
 
   if (!character) return null;
 

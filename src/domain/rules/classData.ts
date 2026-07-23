@@ -2,6 +2,7 @@
 // Extend when subclass support is needed.
 
 import type { AbilityScores } from '../character/types';
+import type { Edition } from './edition';
 
 export type SpellcastingType = 'full' | 'half' | 'artificer' | 'pact' | 'none';
 export type AbilityKey = keyof AbilityScores;
@@ -191,11 +192,28 @@ export function asiLevelsUpTo(className: string, level: number): number[] {
   return (ASI_LEVELS[className] ?? ASI_DEFAULT).filter(l => l <= level);
 }
 
-// Level at which the class picks a subclass
+// Level at which the class picks a subclass (2014). 2024 standardizes this to level 3 for all.
 const SUBCLASS_LEVEL: Record<string, number> = {
   Cleric: 1, Sorcerer: 1, Warlock: 1,
   Wizard: 2, Druid: 2,
 };
-export function subclassLevel(className: string): number {
+// 2024 Weapon Mastery — how many weapons' mastery properties a martial can use. Barbarian and
+// Fighter scale (their class table has a "Weapon Mastery" column); Paladin/Ranger/Rogue get a
+// fixed 2 from their level-1 feature. No such mechanic exists in 2014.
+const WEAPON_MASTERY_2024: Record<string, readonly number[]> = {
+  Barbarian: [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+  Fighter:   [3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6],
+};
+const WEAPON_MASTERY_FIXED_2024: Record<string, number> = { Paladin: 2, Ranger: 2, Rogue: 2 };
+
+export function weaponMasteryCount(className: string, level: number, edition: Edition = '5e'): number {
+  if (edition !== '5.5e') return 0;
+  const scaling = WEAPON_MASTERY_2024[className];
+  if (scaling) return scaling[Math.min(Math.max(level, 1), 20) - 1];
+  return WEAPON_MASTERY_FIXED_2024[className] ?? 0;
+}
+
+export function subclassLevel(className: string, edition: Edition = '5e'): number {
+  if (edition === '5.5e') return 3; // 2024: every class chooses its subclass at level 3
   return SUBCLASS_LEVEL[className] ?? 3;
 }

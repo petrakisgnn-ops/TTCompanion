@@ -233,7 +233,7 @@ export const useCharacterStore = create<CharacterStore>()((set, get) => ({
       // and every class's own resource pools (Rage, Ki, Channel Divinity, ...). Runs
       // unconditionally over ALL classes, not just the one leveled — a multiclass caster's
       // combined slot count depends on every class's level, not just the one that changed.
-      const resources = recomputeAllResources(classes, c.resources, abilityScores);
+      const resources = recomputeAllResources(classes, c.resources, abilityScores, c.edition);
 
       return { ...c, classes, hp, abilityScores, resources };
     }),
@@ -255,7 +255,7 @@ export const useCharacterStore = create<CharacterStore>()((set, get) => ({
       const mergedArmor = [...new Set([...c.proficiencies.armor, ...proficiencies.armor])];
       const mergedWeapons = [...new Set([...c.proficiencies.weapons, ...proficiencies.weapons])];
 
-      const resources = recomputeAllResources(classes, c.resources, c.abilityScores);
+      const resources = recomputeAllResources(classes, c.resources, c.abilityScores, c.edition);
 
       return {
         ...c,
@@ -398,7 +398,7 @@ export const useCharacterStore = create<CharacterStore>()((set, get) => ({
         ...withFeat,
         abilityScores: boosted.abilityScores,
         hp: boosted.hp,
-        resources: recomputeAllResources(c.classes, c.resources, boosted.abilityScores),
+        resources: recomputeAllResources(c.classes, c.resources, boosted.abilityScores, c.edition),
       };
     }),
 

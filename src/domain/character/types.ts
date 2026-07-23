@@ -1,5 +1,6 @@
 import type { RefId } from '../reference/types';
 import type { DashboardLayout } from '../widgets/types';
+import type { Edition } from '../rules/edition';
 
 export interface AbilityScores {
   str: number;
@@ -69,6 +70,9 @@ export interface KnownSpellRef extends RefId {
 export interface Character {
   id: string;
   name: string;
+  /** The rules edition this character follows — set at creation, sticky thereafter. Older saved
+   * characters (created before edition support) are normalized to '5e' on load. */
+  edition: Edition;
   classes: ClassLevel[];
   race: RefId;
   subrace?: RefId | null;
@@ -96,6 +100,8 @@ export interface Character {
   preparedSpells: RefId[];
   /** Chosen class options — fighting styles, invocations, metamagic, maneuvers, ... (entries in optionalfeatures.json). */
   optionalFeatures: RefId[];
+  /** Weapons whose Mastery property the character can use (2024 martials — see weaponMasteryCount). */
+  masteredWeapons: RefId[];
   inventory: InventoryItem[];
   feats: RefId[];
   resources: ResourceTrack[];

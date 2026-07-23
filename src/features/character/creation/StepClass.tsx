@@ -54,7 +54,7 @@ export function StepClass({ data, patch }: StepClassProps) {
   // pick it here — Cleric/Sorcerer/Warlock always (level 1), and everyone else when the
   // character is being created at/above their subclass level (e.g. a Fighter made at
   // level 5 picks their Martial Archetype now, not via a future level-up).
-  const needsSubclassNow = data.classRef ? data.level >= subclassLevel(data.classRef.name) : false;
+  const needsSubclassNow = data.classRef ? data.level >= subclassLevel(data.classRef.name, edition) : false;
 
   useEffect(() => {
     if (!needsSubclassNow || !data.classRef) { setSubclasses([]); return; }
@@ -123,7 +123,7 @@ export function StepClass({ data, patch }: StepClassProps) {
                   {needsSubclassNow && (
                     <div className="bg-[var(--color-card)] rounded-xl p-3 space-y-2">
                       <p className="text-xs text-[var(--color-faint)] uppercase tracking-wide font-semibold">
-                        {cls.name} chooses its subclass at level {subclassLevel(cls.name)}
+                        {cls.name} chooses its subclass at level {subclassLevel(cls.name, edition)}
                       </p>
                       {subclasses.length === 0 ? (
                         <p className="text-sm text-[var(--color-faint)] italic">Loading subclasses…</p>

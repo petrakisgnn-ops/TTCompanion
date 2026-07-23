@@ -27,3 +27,17 @@ export function parseBonusSkillAndFeatGrant(entries: Entry[]): { grantsSkill: bo
 
   return { grantsSkill, grantsFeat };
 }
+
+/**
+ * Parses a 2024 species' `feats` grant — the "choose one feat from a category" shape, e.g. Human's
+ * `[{ anyFromCategory: { category: ["O"], count: 1 } }]` (one Origin feat). Returns the feat
+ * category code, or null when the species grants no such choice.
+ */
+export function parseRaceFeatGrant(feats: unknown): { category: string } | null {
+  const block = Array.isArray(feats) ? (feats[0] as Record<string, unknown> | undefined) : undefined;
+  const afc = block?.anyFromCategory as { category?: unknown } | undefined;
+  if (afc && Array.isArray(afc.category) && typeof afc.category[0] === 'string') {
+    return { category: afc.category[0] };
+  }
+  return null;
+}

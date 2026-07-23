@@ -32,6 +32,7 @@ interface SpellSelectionProps {
  */
 export function SpellSelection({ character, actions, expandedByClass = {}, linkToDetail = true }: SpellSelectionProps) {
   const mods = allAbilityMods(character.abilityScores);
+  const edition = character.edition;
   const sections: ReactNode[] = [];
   const multiclass = character.classes.length > 1;
 
@@ -51,9 +52,9 @@ export function SpellSelection({ character, actions, expandedByClass = {}, linkT
       : undefined;
 
     const classBrowsers: ReactNode[] = [];
-    if (isPreparedCaster(cname)) {
+    if (isPreparedCaster(cname, edition)) {
       const prepare: SpellActionBlock = {
-        verb: 'Prepare', cap: maxPreparedSpells(cname, classLevel, classSpellMod),
+        verb: 'Prepare', cap: maxPreparedSpells(cname, classLevel, classSpellMod, edition),
         onAdd: actions.addPrepared, onRemove: actions.removePrepared,
       };
       if (cname.toLowerCase() === 'wizard') {
@@ -72,7 +73,7 @@ export function SpellSelection({ character, actions, expandedByClass = {}, linkT
           <ClassSpellBrowser key={`${cname}-prepare`} character={character} className={cname} poolSource="class-list" leveled={prepare} cantrips={cantrips} extraSpells={expandedByClass[cname]} linkToDetail={linkToDetail} />,
         );
       }
-    } else if (isKnownCaster(cname, subclassName)) {
+    } else if (isKnownCaster(cname, subclassName, edition)) {
       // Subclass casters (Eldritch Knight / Arcane Trickster) learn from the Wizard list.
       const pool = subCaster?.spellList ?? cname;
       const learn: SpellActionBlock = {

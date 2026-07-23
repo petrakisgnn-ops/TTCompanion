@@ -24,6 +24,8 @@ export interface EntryNode {
     | string;
   name?: string;
   entries?: Entry[];
+  /** Singular inline value on a `type: "item"` node (e.g. a background's "Skill Proficiencies: …"). */
+  entry?: string;
   items?: Entry[];
   colLabels?: string[];
   rows?: Entry[][];
