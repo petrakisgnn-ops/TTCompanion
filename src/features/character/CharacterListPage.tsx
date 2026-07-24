@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useCharacterStore } from '../../stores/characterStore';
 import type { Character } from '../../domain/character/types';
 import { abilityMod, totalLevel } from '../../domain/rules';
+import { classSummary } from '../../domain/character/format';
 import { useCharacterAc } from './useCharacterAc';
 
 function classLabel(c: Character): string {
-  return c.classes.map(cl => `${cl.classRef.name} ${cl.level}`).join(' / ');
+  return classSummary(c.classes);
 }
 
 function hpPct(c: Character): number {

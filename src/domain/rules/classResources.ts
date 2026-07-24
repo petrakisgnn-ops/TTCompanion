@@ -1,6 +1,6 @@
 import type { AbilityScores, ResourceTrack } from '../character/types';
 import type { Edition } from './edition';
-import { abilityMod } from './index';
+import { abilityMod, proficiencyBonus } from './index';
 
 /**
  * Static per-class resource id lists — used only by the level-up merge to know which existing
@@ -88,6 +88,51 @@ export function computeClassResources(className: string, level: number, abilityS
     case 'Wizard': {
       // Arcane Recovery: once per day (spent after a short rest to recover slots).
       return track('arcane-recovery', 'Arcane Recovery', 1, 'longRest');
+    }
+    default:
+      return [];
+  }
+}
+
+/**
+ * Static per-subclass resource id lists — same role as CLASS_RESOURCE_IDS but keyed by subclass,
+ * so the level-up merge recognizes (and cleanly removes) pools a subclass grants.
+ */
+export const SUBCLASS_RESOURCE_IDS: Record<string, string[]> = {
+  'Battle Master': ['superiority-dice'],
+  'Psi Warrior': ['psionic-energy-dice'],
+  'Arcane Archer': ['arcane-shot'],
+  'Samurai': ['fighting-spirit'],
+};
+
+/**
+ * Non-spell resource pools a *subclass* grants at a given class level. Hand-maintained like
+ * computeClassResources; currently the Fighter subclasses whose whole identity is a limited pool
+ * (Battle Master's superiority dice being the archetypal case). `level` is the class's own level.
+ */
+export function computeSubclassResources(
+  subclassName: string | undefined,
+  level: number,
+): ResourceTrack[] {
+  switch (subclassName) {
+    case 'Battle Master': {
+      // Superiority dice: 4 / 5 / 6 at levels 3 / 7 / 15; die grows d8 → d10 (10) → d12 (18).
+      const dice = thresholdUses(level, [[3, 4], [7, 5], [15, 6]]);
+      const dieSize = level >= 18 ? 'd12' : level >= 10 ? 'd10' : 'd8';
+      return track('superiority-dice', `Superiority Dice (${dieSize})`, dice, 'shortRest');
+    }
+    case 'Psi Warrior': {
+      // Psionic Energy dice: twice proficiency bonus, recharged on a short or long rest.
+      const dice = level >= 3 ? proficiencyBonus(level) * 2 : 0;
+      return track('psionic-energy-dice', 'Psionic Energy Dice', dice, 'shortRest');
+    }
+    case 'Arcane Archer': {
+      // Arcane Shot: 2 uses, regained on a short or long rest.
+      return track('arcane-shot', 'Arcane Shot', level >= 3 ? 2 : 0, 'shortRest');
+    }
+    case 'Samurai': {
+      // Fighting Spirit: 3 uses per long rest.
+      return track('fighting-spirit', 'Fighting Spirit', level >= 3 ? 3 : 0, 'longRest');
     }
     default:
       return [];

@@ -2,6 +2,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCharacterStore } from '../../../stores/characterStore';
 import { abilityMod, proficiencyBonus, spellSaveDc, passiveScore, totalLevel as calcTotalLevel } from '../../../domain/rules';
+import { classSummary } from '../../../domain/character/format';
 import { useCharacterAc } from '../useCharacterAc';
 import { getClassData, getSubclassCaster } from '../../../domain/rules/classData';
 import { HpTracker } from './HpTracker';
@@ -131,9 +132,7 @@ export function CharacterSheetPage() {
   const saveDc = spellMod !== null ? spellSaveDc(spellMod, pb) : null;
   const attackBonus = spellMod !== null ? spellMod + pb : null;
 
-  const classLabel = character.classes
-    .map(cl => `${cl.classRef.name} ${cl.level}`)
-    .join(' / ');
+  const classLabel = classSummary(character.classes);
 
   // The Learn/Prepare browser stack — shared with the creation wizard's Spells step so both
   // surface identical per-class choices; here the actions write through the character store.

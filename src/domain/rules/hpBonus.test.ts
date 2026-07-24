@@ -26,6 +26,17 @@ describe('hpBonusPerLevel', () => {
     expect(hpBonusPerLevel(char({ classes: [{ classRef: { name: 'Sorcerer', source: 'PHB' }, level: 3, subclass: { name: 'Draconic Bloodline', source: 'PHB' } }] }))).toBe(1);
   });
 
+  it('gives the Tough feat +2 per level', () => {
+    expect(hpBonusPerLevel(char({ feats: [{ name: 'Tough', source: 'PHB' }] }))).toBe(2);
+  });
+
+  it('stacks Tough with a per-level racial bonus', () => {
+    expect(hpBonusPerLevel(char({
+      race: { name: 'Dwarf', source: 'PHB' }, subrace: { name: 'Hill', source: 'PHB' },
+      feats: [{ name: 'Tough', source: 'XPHB' }],
+    }))).toBe(3);
+  });
+
   it('is 0 for an ordinary character', () => {
     expect(hpBonusPerLevel(char({ race: { name: 'Human', source: 'PHB' } }))).toBe(0);
     expect(hpBonusPerLevel(char({ race: { name: 'Dwarf', source: 'PHB' }, subrace: { name: 'Mountain', source: 'PHB' } }))).toBe(0);

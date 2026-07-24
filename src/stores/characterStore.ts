@@ -66,6 +66,8 @@ interface CharacterStore {
   addOptionalFeature: (id: string, feature: RefId) => Promise<void>;
   removeOptionalFeature: (id: string, feature: RefId) => Promise<void>;
   toggleExpertise: (id: string, skill: string) => Promise<void>;
+  /** Show/hide a single feature (by featureKey) on the home Features widget. */
+  toggleHiddenFeature: (id: string, key: string) => Promise<void>;
 }
 
 export const useCharacterStore = create<CharacterStore>()((set, get) => ({
@@ -389,11 +391,20 @@ export const useCharacterStore = create<CharacterStore>()((set, get) => ({
         languages: [...new Set([...c.proficiencies.languages, ...profGrants.languages])],
         expertise: [...new Set([...c.proficiencies.expertise, ...profGrants.expertise])],
       } : c.proficiencies;
-      const withFeat = { ...c, feats: [...c.feats, feat], proficiencies };
+      // Tough: hit point maximum increases by 2 × level the moment it's gained. Apply that
+      // retroactive catch-up now; the ongoing +2 per future level is handled by hpBonusPerLevel.
+      const withFeat0 = { ...c, feats: [...c.feats, feat], proficiencies };
+      const withFeat = feat.name === 'Tough'
+        ? { ...withFeat0, hp: {
+            ...withFeat0.hp,
+            max: withFeat0.hp.max + 2 * totalLevel(c.classes),
+            current: withFeat0.hp.current + 2 * totalLevel(c.classes),
+          } }
+        : withFeat0;
       if (!abilityBoosts || Object.keys(abilityBoosts).length === 0) return withFeat;
       // Half-feat: apply its ability increase (CON retro-HP handled inside), then
       // recompute resources since pools like Bardic Inspiration key off ability mods.
-      const boosted = applyAbilityBoosts(c.abilityScores, c.hp, abilityBoosts, totalLevel(c.classes));
+      const boosted = applyAbilityBoosts(c.abilityScores, withFeat.hp, abilityBoosts, totalLevel(c.classes));
       return {
         ...withFeat,
         abilityScores: boosted.abilityScores,
@@ -431,6 +442,15 @@ export const useCharacterStore = create<CharacterStore>()((set, get) => ({
             ? c.proficiencies.expertise.filter(s => s !== skill)
             : [...c.proficiencies.expertise, skill],
         },
+      };
+    }),
+
+  toggleHiddenFeature: (id, key) =>
+    get().mutate(id, c => {
+      const hidden = c.hiddenFeatures ?? [];
+      return {
+        ...c,
+        hiddenFeatures: hidden.includes(key) ? hidden.filter(k => k !== key) : [...hidden, key],
       };
     }),
 }));

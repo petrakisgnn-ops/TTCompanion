@@ -9,6 +9,7 @@ import { AddWidgetSheet } from './AddWidgetSheet';
 import { WidgetConfigSheet } from './WidgetConfigSheet';
 import type { WidgetInstance } from '../../domain/widgets/types';
 import type { Character } from '../../domain/character/types';
+import { classSummary } from '../../domain/character/format';
 import type { ResourceTrackerConfig } from '../../widgets/ResourceTrackerWidget';
 
 function buildDefaultWidgets(character: Character): WidgetInstance[] {
@@ -83,7 +84,7 @@ function NoDashboard() {
             <div>
               <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>{c.name}</p>
               <p style={{ fontSize: 11, color: 'var(--color-muted)' }}>
-                {c.race.name} · {c.classes.map(cl => `${cl.classRef.name} ${cl.level}`).join('/')}
+                {c.race.name} · {classSummary(c.classes)}
               </p>
             </div>
           </button>

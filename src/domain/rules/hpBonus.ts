@@ -22,5 +22,10 @@ export function hpBonusPerLevel(character: Character): number {
     cl.classRef.name === 'Sorcerer' && cl.subclass?.name === 'Draconic Bloodline',
   )) bonus += 1;
 
+  // Tough feat — "+2 HP max per level" (taken at creation OR via ASI). Modeling it as a flat
+  // +2 per character level yields exactly the RAW total (2×level when gained + 2 per level
+  // thereafter always sums to 2×level), so it flows through creation and every level-up.
+  if ((character.feats ?? []).some(f => f.name === 'Tough')) bonus += 2;
+
   return bonus;
 }

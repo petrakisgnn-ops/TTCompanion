@@ -4,6 +4,7 @@ import { matchesEdition } from '../../../domain/rules/edition';
 import { useSettingsStore, type Edition } from '../../../stores/settingsStore';
 import type { WizardData } from './CharacterWizard';
 import type { RefId } from '../../../domain/reference/types';
+import { subclassLabel } from '../subclassLabel';
 
 interface StepClassProps {
   data: WizardData;
@@ -141,7 +142,7 @@ export function StepClass({ data, patch }: StepClassProps) {
                                     : 'bg-[var(--color-raised)] text-[var(--color-text-2)] hover:bg-[var(--color-card-inner)]'
                                 }`}
                               >
-                                {sub.name}
+                                {subclassLabel(sub, subclasses)}
                               </button>
                             );
                           })}

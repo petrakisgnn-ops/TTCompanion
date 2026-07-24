@@ -353,9 +353,10 @@ export function CharacterWizard() {
 
     const cls = getClassData(classRef.name);
     const conMod = abilityMod(finalScores.con);
-    // Hill Dwarf / Draconic Bloodline grant +1 HP max per level (see hpBonusPerLevel).
+    // Hill Dwarf / Draconic Bloodline / Tough grant HP max per level (see hpBonusPerLevel).
     const hpBonus = hpBonusPerLevel({
       race: raceRef, subrace: subraceRef,
+      feats: grantedFeats,
       classes: [{ classRef, level, subclass: finalSubclass }],
     } as Character) * level;
     const hp = cls

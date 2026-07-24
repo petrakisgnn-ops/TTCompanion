@@ -3,7 +3,7 @@ import type { RefId } from '../reference/types';
 import type { Edition } from './edition';
 import { getClassData, getSubclassCaster, type ClassData } from './classData';
 import { computeSpellSlots, computeMulticlassSpellSlots, type EffectiveCasting } from './spellSlots';
-import { computeClassResources, CLASS_RESOURCE_IDS } from './classResources';
+import { computeClassResources, computeSubclassResources, CLASS_RESOURCE_IDS, SUBCLASS_RESOURCE_IDS } from './classResources';
 
 const SPELL_SLOT_AND_PACT_IDS = [
   'slot-1', 'slot-2', 'slot-3', 'slot-4', 'slot-5', 'slot-6', 'slot-7', 'slot-8', 'slot-9', 'pact',
@@ -53,6 +53,10 @@ export function recomputeAllResources(
     }
     managed.push(...computeClassResources(data.name, cl.level, abilityScores, edition));
     for (const id of CLASS_RESOURCE_IDS[data.name] ?? []) ownedIds.add(id);
+
+    // Subclass pools (Battle Master superiority dice, …).
+    managed.push(...computeSubclassResources(cl.subclass?.name, cl.level));
+    for (const id of SUBCLASS_RESOURCE_IDS[cl.subclass?.name ?? ''] ?? []) ownedIds.add(id);
   }
 
   // Resources not owned by any of this character's classes (shouldn't normally happen, but

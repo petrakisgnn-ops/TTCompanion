@@ -104,6 +104,8 @@ export interface Character {
   masteredWeapons: RefId[];
   inventory: InventoryItem[];
   feats: RefId[];
+  /** Feature keys (see featureKey) the player has hidden from the home Features widget. Absent/empty = all shown. */
+  hiddenFeatures?: string[];
   resources: ResourceTrack[];
   currency: Currency;
   dashboard: DashboardLayout;

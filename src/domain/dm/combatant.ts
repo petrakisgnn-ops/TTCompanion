@@ -1,4 +1,5 @@
 import type { Character } from '../character/types';
+import { classSummary } from '../character/format';
 import { abilityMod, characterAc, passiveScore, proficiencyBonus, totalLevel } from '../rules';
 import type { LobbyPlayer } from '../session/types';
 import type { DeployedInstance, Disposition, PcCombatMeta } from './types';
@@ -34,7 +35,7 @@ export function pcToCombatant(character: Character, meta: PcCombatMeta | undefin
     id: character.id,
     kind: 'pc',
     name: character.name,
-    subtitle: `${character.race.name} · ${character.classes.map(c => `${c.classRef.name} ${c.level}`).join('/')}`,
+    subtitle: `${character.race.name} · ${classSummary(character.classes)}`,
     ac: characterAc(character),
     hp: { current: character.hp.current, max: character.hp.max },
     passivePerception: passiveScore(wisMod, pb, proficient, character.proficiencies.expertise?.includes('Perception') ?? false),

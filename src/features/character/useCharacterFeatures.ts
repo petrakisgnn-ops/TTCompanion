@@ -29,6 +29,15 @@ export interface FeatureGroup {
   features: FeatureRow[];
 }
 
+/**
+ * Stable identity for a feature within a character, used to remember which ones the player hid from
+ * the home widget. Group title + feature name + level disambiguates repeats like "Ability Score
+ * Improvement" that recur at several levels of the same class.
+ */
+export function featureKey(groupTitle: string, feature: FeatureRow): string {
+  return `${groupTitle}|${feature.title}|${feature.level ?? ''}`;
+}
+
 /** Fetches and groups a character's race, background, and per-class (+subclass) features, gated to the levels they've actually reached. */
 export function useCharacterFeatures(character: Character): FeatureGroup[] {
   const [raceFeatures, setRaceFeatures] = useState<FeatureRow[]>([]);

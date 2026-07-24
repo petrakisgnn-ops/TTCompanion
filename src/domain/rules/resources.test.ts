@@ -17,6 +17,29 @@ describe('computeSpellSlots (1/3 casters)', () => {
   });
 });
 
+describe('subclass resource pools', () => {
+  const trackById = (tracks: { id: string; max: number; label: string }[], id: string) =>
+    tracks.find(t => t.id === id);
+
+  it('grants a Battle Master superiority dice, scaling count and die size', () => {
+    const at = (level: number) => trackById(
+      recomputeAllResources([{ classRef: { name: 'Fighter', source: 'PHB' }, level, subclass: { name: 'Battle Master', source: 'PHB' } }], [], SCORES),
+      'superiority-dice',
+    );
+    expect(at(3)).toMatchObject({ max: 4, label: 'Superiority Dice (d8)' });
+    expect(at(7)).toMatchObject({ max: 5, label: 'Superiority Dice (d8)' });
+    expect(at(10)).toMatchObject({ max: 5, label: 'Superiority Dice (d10)' });
+    expect(at(18)).toMatchObject({ max: 6, label: 'Superiority Dice (d12)' });
+  });
+
+  it('gives a plain Champion no superiority dice', () => {
+    const tracks = recomputeAllResources(
+      [{ classRef: { name: 'Fighter', source: 'PHB' }, level: 5, subclass: { name: 'Champion', source: 'PHB' } }], [], SCORES,
+    );
+    expect(trackById(tracks, 'superiority-dice')).toBeUndefined();
+  });
+});
+
 describe('recomputeAllResources slot routing', () => {
   it('uses the class OWN table for a single-class half-caster (regression: Paladin 5 = 4×1st + 2×2nd)', () => {
     const tracks = recomputeAllResources(
