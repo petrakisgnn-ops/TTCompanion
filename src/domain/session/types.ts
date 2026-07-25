@@ -16,6 +16,12 @@ export interface LobbyPlayer {
   name: string;
   joinedAt: number;
   character?: PlayerSnapshot;
+  /**
+   * Connection presence. `false` means their device dropped the socket (sleep, network loss) but
+   * they're still in the lobby — shown as "away" rather than removed. Absent = treat as online
+   * (older entries / the single-device mock).
+   */
+  online?: boolean;
 }
 
 /** A live session lobby: one DM, a shared 5-digit code, and the players who've joined. */

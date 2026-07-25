@@ -27,7 +27,15 @@ function toLobby(code: string, val: LobbyNode | null): Lobby | null {
 const randomCode = (): string => String(Math.floor(10000 + Math.random() * 90000));
 
 export class FirebaseLobbyRepository implements LobbyRepository {
+  /** Per-lobby teardown for the `.info/connected` presence listener started in joinLobby. */
+  private presence = new Map<string, () => void>();
+
   uid(): string { return auth.currentUser?.uid ?? ''; }
+
+  private stopPresence(code: string): void {
+    const off = this.presence.get(code);
+    if (off) { off(); this.presence.delete(code); }
+  }
 
   async createLobby(dmName: string): Promise<string> {
     const uid = await ensureAuth();
@@ -50,13 +58,29 @@ export class FirebaseLobbyRepository implements LobbyRepository {
     if (!node || node.status !== 'open') return false;
 
     // RTDB rejects `undefined`, so only include character when the player brought one.
-    const entry: LobbyPlayer = { uid, name: player.name, joinedAt: Date.now() };
+    const entry: LobbyPlayer = { uid, name: player.name, joinedAt: Date.now(), online: true };
     if (player.character) entry.character = player.character;
 
     const playerRef = ref(db, `lobbies/${code}/players/${uid}`);
-    await set(playerRef, entry);
-    // Auto-remove this player if the tab closes / device drops.
-    onDisconnect(playerRef).remove();
+
+    // Presence that survives device sleep: instead of removing the player when the socket drops,
+    // flag them offline (they stay in the lobby, shown as "away"), and re-assert full presence
+    // every time the client reconnects. Without the reconnect step, the first drop (sleep) would
+    // strand them offline forever; without keeping the entry, they'd vanish from the DM's roster.
+    const assertPresence = async (): Promise<void> => {
+      const cur = await get(ref(db, `lobbies/${code}`));
+      const still = cur.val() as LobbyNode | null;
+      if (!still || still.status !== 'open') return; // lobby closed while we were away — don't resurrect it
+      await onDisconnect(playerRef).update({ online: false });
+      await set(playerRef, entry);
+    };
+
+    await assertPresence(); // appear immediately
+    this.stopPresence(code); // guard against a re-join without an explicit leave
+    const off = onValue(ref(db, '.info/connected'), snap => {
+      if (snap.val() === true) void assertPresence();
+    });
+    this.presence.set(code, off);
     return true;
   }
 
@@ -67,6 +91,7 @@ export class FirebaseLobbyRepository implements LobbyRepository {
 
   async leaveLobby(code: string): Promise<void> {
     const uid = await ensureAuth();
+    this.stopPresence(code);
     const playerRef = ref(db, `lobbies/${code}/players/${uid}`);
     await onDisconnect(playerRef).cancel();
     await remove(playerRef);

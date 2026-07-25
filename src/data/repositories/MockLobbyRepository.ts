@@ -34,7 +34,7 @@ export class MockLobbyRepository implements LobbyRepository {
     const l = lobbies.get(code);
     if (!l || l.status !== 'open') return Promise.resolve(false);
     if (!l.players.some(p => p.uid === MY_UID)) {
-      l.players.push({ uid: MY_UID, name: player.name, joinedAt: Date.now(), character: player.character });
+      l.players.push({ uid: MY_UID, name: player.name, joinedAt: Date.now(), character: player.character, online: true });
     }
     emit(code);
     return Promise.resolve(true);

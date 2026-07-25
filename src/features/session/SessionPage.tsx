@@ -38,7 +38,7 @@ export function SessionPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {lobby.players.map(p => (
-                <div key={p.uid} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '11px 13px' }}>
+                <div key={p.uid} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '11px 13px', opacity: p.online === false ? 0.55 : 1 }}>
                   <div style={{ width: 38, height: 38, borderRadius: 11, flexShrink: 0, background: 'linear-gradient(135deg,var(--color-gold),var(--color-gold-hover))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: 'var(--color-gold-on)' }}>
                     {(p.character?.name ?? p.name)[0]?.toUpperCase() ?? '?'}
                   </div>
@@ -46,6 +46,7 @@ export function SessionPage() {
                     <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text)' }}>
                       {p.character?.name ?? p.name}
                       {p.uid === myUid && <span style={{ fontSize: 11, color: 'var(--color-faint)', marginLeft: 6 }}>(you)</span>}
+                      {p.online === false && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-muted)', marginLeft: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>· away</span>}
                     </p>
                     {p.character && (
                       <p style={{ fontSize: 11.5, color: 'var(--color-muted)', marginTop: 1 }}>
