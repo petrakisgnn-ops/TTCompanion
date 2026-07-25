@@ -16,12 +16,14 @@ export default defineConfig({
         name: 'D&D Companion',
         short_name: 'DnD',
         description: 'D&D 5e companion for players and DMs',
-        theme_color: '#0f172a',
-        background_color: '#0f172a',
+        theme_color: '#16181d',
+        background_color: '#16181d',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
-        scope: '/',
+        // Must match `base` above — the app is served from the /TTCompanion/ subpath on GitHub
+        // Pages, so the installed icon has to launch there, not at the domain root.
+        start_url: '/TTCompanion/',
+        scope: '/TTCompanion/',
         icons: [
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
