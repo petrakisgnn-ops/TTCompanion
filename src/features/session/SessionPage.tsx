@@ -3,6 +3,7 @@ import { useSessionStore } from '../../stores/sessionStore';
 import { useModeStore } from '../../stores/modeStore';
 import { useCharacterStore } from '../../stores/characterStore';
 import { snapshotOf } from '../../domain/session/snapshot';
+import { LOBBY_ENABLED } from '../../data/repositories/sessionBackend';
 
 export function SessionPage() {
   const { mode } = useModeStore();
@@ -75,6 +76,8 @@ export function SessionPage() {
     <div style={{ padding: '16px 14px 90px', display: 'flex', flexDirection: 'column', gap: 18 }}>
       <Header />
 
+      {!LOBBY_ENABLED && <DisabledNotice />}
+
       {mode === 'dm' ? (
         <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-2)' }}>Create a lobby</p>
@@ -87,8 +90,12 @@ export function SessionPage() {
             placeholder="Your name (optional)"
             style={inputStyle}
           />
-          <button onClick={() => createLobby(dmName)} disabled={busy} style={primaryBtn(busy)}>
-            {busy ? 'Creating…' : 'Create Lobby'}
+          <button
+            onClick={() => createLobby(dmName)}
+            disabled={busy || !LOBBY_ENABLED}
+            style={primaryBtn(busy || !LOBBY_ENABLED)}
+          >
+            {!LOBBY_ENABLED ? 'Unavailable' : busy ? 'Creating…' : 'Create Lobby'}
           </button>
         </div>
       ) : (
@@ -114,10 +121,10 @@ export function SessionPage() {
           )}
           <button
             onClick={() => joinLobby(joinCode, playerName || activeCharacter?.name || '', activeCharacter ? snapshotOf(activeCharacter) : undefined)}
-            disabled={busy || joinCode.length !== 5}
-            style={primaryBtn(busy || joinCode.length !== 5)}
+            disabled={busy || joinCode.length !== 5 || !LOBBY_ENABLED}
+            style={primaryBtn(busy || joinCode.length !== 5 || !LOBBY_ENABLED)}
           >
-            {busy ? 'Joining…' : 'Join Lobby'}
+            {!LOBBY_ENABLED ? 'Unavailable' : busy ? 'Joining…' : 'Join Lobby'}
           </button>
         </div>
       )}
@@ -143,6 +150,20 @@ const primaryBtn = (disabled: boolean): React.CSSProperties => ({
   background: 'var(--color-gold)', color: 'var(--color-gold-on)', fontWeight: 800, fontSize: 15,
   cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
 });
+
+function DisabledNotice() {
+  return (
+    <div style={{ display: 'flex', gap: 10, background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 14, padding: '13px 14px' }}>
+      <span className="msym" style={{ fontSize: 20, color: 'var(--color-muted)', flexShrink: 0 }}>lock</span>
+      <div>
+        <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--color-text-2)' }}>Multiplayer is off</p>
+        <p style={{ fontSize: 12, color: 'var(--color-faint)', lineHeight: 1.45, marginTop: 2 }}>
+          Lobbies are temporarily disabled while the server rules are tightened. Everything else in the app works as normal.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function Header() {
   return (
