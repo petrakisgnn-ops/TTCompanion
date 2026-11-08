@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { isMundane } from '../../../domain/reference/itemSearch';
 import { db } from '../../../data/db';
 import { weaponMasteryCount } from '../../../domain/rules/classData';
 import { useSettingsStore } from '../../../stores/settingsStore';
@@ -28,7 +29,8 @@ export function WeaponMasteryPicker({ data, patch }: Props) {
     db.items.toArray().then(items => {
       if (cancelled) return;
       const opts = items
-        .filter(i => Array.isArray(i.mastery) && i.mastery.length > 0)
+        // Base weapons only — magic versions (+1 Longsword, …) share the base's mastery.
+        .filter(i => Array.isArray(i.mastery) && i.mastery.length > 0 && isMundane(i) && !i.baseItem)
         .map(i => ({ name: i.name, source: i.source, mastery: String((i.mastery as string[])[0]).split('|')[0] }))
         .sort((a, b) => a.name.localeCompare(b.name));
       setWeapons(opts);

@@ -1,6 +1,7 @@
 ﻿import { useEffect, useRef, useState } from 'react';
+import { fetchSubclassOptions } from '../grantSourcesCache';
 import { useCharacterStore } from '../../../stores/characterStore';
-import { useSettingsStore, type Edition } from '../../../stores/settingsStore';
+import { useSettingsStore } from '../../../stores/settingsStore';
 import type { Character, AbilityScores } from '../../../domain/character/types';
 import type { RefId } from '../../../domain/reference/types';
 import { getClassData, isAsiLevel, subclassLevel, type AbilityKey } from '../../../domain/rules/classData';
@@ -15,7 +16,6 @@ import { hpBonusPerLevel } from '../../../domain/rules/hpBonus';
 import { isAsiFeatEligible } from '../../../domain/rules/featCategory';
 import { abilityMod, totalLevel } from '../../../domain/rules';
 
-interface RawSubclass { name: string; source: string; reprintedAs?: unknown }
 
 interface FeatEntry {
   name: string;
@@ -43,28 +43,6 @@ function featPrereqLabel(prerequisite: unknown[] | undefined): string | null {
   return parts.length > 0 ? parts.join(', ') : null;
 }
 
-async function fetchSubclasses(className: string, edition: Edition): Promise<RefId[]> {
-  const file = `${import.meta.env.BASE_URL}data/class/class-${className.toLowerCase()}.json`;
-  try {
-    const res = await fetch(file);
-    if (!res.ok) return [];
-    const json = await res.json() as { subclass?: RawSubclass[] };
-    // The raw data lists every subclass more than once: a "reprintedAs" stub pointing at its
-    // 2024 successor (skip), plus separate PHB and XPHB entries sharing the exact same display
-    // name — filter to the active edition like Race/Background already do, then dedupe.
-    const seen = new Set<string>();
-    const result: RefId[] = [];
-    for (const s of json.subclass ?? []) {
-      if (s.reprintedAs) continue;
-      if (!matchesEdition(s.source, null, edition)) continue;
-      const key = `${s.name}|${s.source}`.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      result.push({ name: s.name, source: s.source });
-    }
-    return result;
-  } catch { return []; }
-}
 
 const ABILITY_KEYS: (keyof AbilityScores)[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
 const ABILITY_LABEL: Record<keyof AbilityScores, string> = {
@@ -111,7 +89,7 @@ export function LevelUpSheet({ character, onClose }: LevelUpSheetProps) {
   useEffect(() => {
     if (!picksSubclass) return;
     setChosenSubclass(null);
-    fetchSubclasses(selectedClass.classRef.name, edition).then(setAvailableSubclasses);
+    fetchSubclassOptions(selectedClass.classRef.name, selectedClass.classRef.source, character.edition).then(setAvailableSubclasses);
   }, [picksSubclass, selectedClass.classRef.name, edition]);
 
   // Fetch feats.json lazily — only once the player actually picks "take a feat" instead of an ASI.
@@ -126,21 +104,20 @@ export function LevelUpSheet({ character, onClose }: LevelUpSheetProps) {
   // "Ability Score Improvement" feat (redundant with the +2/+1+1 option right above it).
   useEffect(() => {
     if (featTimer.current) clearTimeout(featTimer.current);
-    if (!featQuery.trim()) { setFeatResults([]); return; }
     featTimer.current = setTimeout(() => {
-      const q = featQuery.toLowerCase();
+      const q = featQuery.trim().toLowerCase();
       const knownKeys = new Set(character.feats.map(f => `${f.name}|${f.source}`.toLowerCase()));
       setFeatResults(
         allFeats
           .filter(f =>
-            f.name.toLowerCase().includes(q) &&
+            (!q || f.name.toLowerCase().includes(q)) &&
             f.name.toLowerCase() !== 'ability score improvement' &&
             !knownKeys.has(`${f.name}|${f.source}`.toLowerCase()) &&
-            // Show feats of the character's edition, and in 2024 only General feats (level-gated).
+            // Feats of the character's edition it can take via ASI (2024: General/Origin, level-gated).
             matchesEdition(f.source, f.reprintedAs, character.edition) &&
-            isAsiFeatEligible(f, level + 1, character.edition),
+            isAsiFeatEligible(f, level + 1, character.edition, character.classes.map(c => c.classRef.name)),
           )
-          .slice(0, 10),
+          .sort((a, b) => a.name.localeCompare(b.name)),
       );
     }, 150);
     return () => { if (featTimer.current) clearTimeout(featTimer.current); };
@@ -443,7 +420,7 @@ export function LevelUpSheet({ character, onClose }: LevelUpSheetProps) {
                       className="w-full bg-[var(--color-raised)] rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-[var(--color-gold-lt)] placeholder:text-[var(--color-faint)]"
                     />
                     {featResults.length > 0 && (
-                      <div className="bg-[var(--color-raised)] rounded-xl overflow-hidden divide-y divide-[var(--color-border)]">
+                      <div className="bg-[var(--color-raised)] rounded-xl overflow-y-auto max-h-72 divide-y divide-[var(--color-border)]">
                         {featResults.map(feat => {
                           const pre = featPrereqLabel(feat.prerequisite);
                           return (

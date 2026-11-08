@@ -2,13 +2,22 @@ import { db } from '../db';
 import type { Character } from '../../domain/character/types';
 import type { CharacterRepository } from './CharacterRepository';
 import { recomputeAllResources } from '../../domain/rules/resources';
+import { classSourceFor } from '../../domain/rules/classData';
 
 // Fill in fields added after a character was created so old saves don't crash.
 function normalize(c: Character): Character {
+  const edition = c.edition ?? '5e';
   const withDefaults: Character = {
     ...c,
     // Characters created before edition support are 2014 (5e).
-    edition: c.edition ?? '5e',
+    edition,
+    // 2024 characters made before the class source was edition-aware point at the PHB (2014)
+    // class — repoint them to the XPHB reprint so their features/choices are the 2024 ones.
+    classes: (c.classes ?? []).map(cl => (edition === '5.5e' && cl.classRef.source === 'PHB'
+      ? { ...cl, classRef: { ...cl.classRef, source: classSourceFor(cl.classRef.name, edition) } }
+      : cl)),
+    featureChoices: c.featureChoices ?? {},
+    customItems: c.customItems ?? [],
     proficiencies: { ...c.proficiencies, expertise: c.proficiencies?.expertise ?? [] },
     hitDiceSpent: c.hitDiceSpent ?? 0,
     deathSaves: c.deathSaves ?? { successes: 0, failures: 0 },

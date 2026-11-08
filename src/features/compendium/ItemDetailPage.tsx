@@ -4,6 +4,10 @@ import { db } from '../../data/db';
 import type { StoredItem } from '../../data/db';
 import { renderEntries } from '../../rendering';
 import { resolveItemMasteries, type ItemMastery } from './itemMasteryCache';
+import { useCharacterStore } from '../../stores/characterStore';
+import { CUSTOM_ITEM_SOURCE } from '../../domain/character/customItems';
+import { resolveItems } from '../character/useResolvedItems';
+import type { Item } from '../../domain/reference/types';
 
 const RARITY_COLOR: Record<string, string> = {
   none: 'text-slate-400',
@@ -49,17 +53,30 @@ function MetaRow({ label, value }: MetaRowProps) {
 export function ItemDetailPage() {
   const { key } = useParams<{ key: string }>();
   const navigate = useNavigate();
-  const [item, setItem] = useState<StoredItem | null>(null);
+  const [item, setItem] = useState<StoredItem | Item | null>(null);
+  const characters = useCharacterStore(st => st.characters);
   const [notFound, setNotFound] = useState(false);
   const [masteries, setMasteries] = useState<ItemMastery[]>([]);
 
   useEffect(() => {
     if (!key) return;
-    db.items.get(decodeURIComponent(key)).then(i => {
+    const decoded = decodeURIComponent(key);
+    const [name, source] = decoded.split('|');
+    // Player-made items live on a character, not in the reference DB.
+    if (source === CUSTOM_ITEM_SOURCE.toLowerCase()) {
+      const owner = characters.find(c => (c.customItems ?? []).some(ci => ci.name.toLowerCase() === name));
+      if (!owner) { setNotFound(true); return; }
+      resolveItems([{ name, source: CUSTOM_ITEM_SOURCE }], owner.customItems).then(m => {
+        const found = [...m.values()][0];
+        if (found) setItem(found); else setNotFound(true);
+      });
+      return;
+    }
+    db.items.get(decoded).then(i => {
       if (i) setItem(i);
       else setNotFound(true);
     });
-  }, [key]);
+  }, [key, characters]);
 
   // Resolve a weapon's mastery property (2024) — e.g. "Sap|XPHB" → what Sap does.
   useEffect(() => {
@@ -101,6 +118,14 @@ export function ItemDetailPage() {
   const weight = item.weight as number | undefined;
   const value = item.value as number | undefined;
   const ac = item.ac as number | undefined;
+  const bonusLines = [
+    item.bonusWeapon ? `${String(item.bonusWeapon)} to attack and damage rolls` : null,
+    item.bonusWeaponAttack ? `${String(item.bonusWeaponAttack)} to attack rolls` : null,
+    item.bonusWeaponDamage ? `${String(item.bonusWeaponDamage)} to damage rolls` : null,
+    item.bonusAc ? `${String(item.bonusAc)} to AC` : null,
+  ].filter((l): l is string => !!l);
+  const baseItemName = typeof item.baseItem === 'string' ? item.baseItem.split('|')[0] : null;
+  const extraDamage = typeof item.extraDamage === 'string' ? item.extraDamage : null;
   // Weapon mastery names come straight from the refs (["Sap|XPHB"] → "Sap"); descriptions load async.
   const masteryNames = (item.mastery as string[] | undefined)?.map(r => r.split('|')[0]);
 
@@ -127,19 +152,22 @@ export function ItemDetailPage() {
             {attuneLabel}
           </span>
         )}
-        <span className="text-xs text-slate-600">{item.source}</span>
+        <span className="text-xs text-slate-600">{item.source === CUSTOM_ITEM_SOURCE ? 'Custom item' : item.source}</span>
       </div>
 
       {/* Stats */}
-      {(dmg1 || ac != null || weight != null || value != null) && (
+      {(dmg1 || ac != null || weight != null || value != null || bonusLines.length > 0) && (
         <section className="space-y-1.5 border-y border-white/10 py-3 mb-4">
+          {baseItemName && <MetaRow label="Base item" value={baseItemName.replace(/\b\w/g, c => c.toUpperCase())} />}
+          {bonusLines.length > 0 && <MetaRow label="Magic bonus" value={bonusLines.join('; ')} />}
+          {extraDamage && <MetaRow label="Extra damage" value={extraDamage} />}
           {dmg1 && (
             <MetaRow
               label="Damage"
               value={`${dmg1}${dmgType ? ` ${DMG_TYPE[dmgType] ?? dmgType}` : ''}`}
             />
           )}
-          {ac != null && <MetaRow label="Armor Class" value={`${ac}${item.type === 'S' ? ' (shield bonus)' : ''}`} />}
+          {ac != null && <MetaRow label="Armor Class" value={`${ac}${String(item.type ?? '').split('|')[0] === 'S' ? ' (shield bonus)' : ''}`} />}
           {properties && properties.length > 0 && (
             <MetaRow
               label="Properties"

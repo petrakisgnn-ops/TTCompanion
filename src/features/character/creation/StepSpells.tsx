@@ -46,6 +46,7 @@ export function StepSpells({ data, patch }: StepSpellsProps) {
       knownSpells: data.knownSpells,
       preparedSpells: data.preparedSpells,
       optionalFeatures: [],
+      featureChoices: data.featureChoices,
       masteredWeapons: [],
       inventory: [],
       feats: [],

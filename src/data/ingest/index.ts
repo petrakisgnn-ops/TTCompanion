@@ -3,7 +3,8 @@ import { ingestSpells } from './spells';
 import { ingestMonsters } from './monsters';
 import { ingestItems } from './items';
 
-export const INGEST_VERSION = 1;
+// Bump whenever the reference data or its ingest changes — clients re-ingest on next start.
+export const INGEST_VERSION = 2;
 
 export interface IngestProgress {
   label: string;

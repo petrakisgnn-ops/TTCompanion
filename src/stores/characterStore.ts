@@ -6,6 +6,10 @@ import { recomputeAllResources } from '../domain/rules/resources';
 import { applyAbilityBoosts } from '../domain/rules/abilityBoosts';
 import { totalLevel } from '../domain/rules';
 import type { FeatProfSelection } from '../domain/rules/featRewards';
+import { featureChoiceTotals, reconcileGrantedProficiencies } from '../domain/rules/featureChoices';
+import { getClassData } from '../domain/rules/classData';
+import { upgradeReprintedSubclasses } from '../features/character/grantSourcesCache';
+import { CUSTOM_ITEM_SOURCE, customItemRef, type CustomItem } from '../domain/character/customItems';
 
 interface CharacterStore {
   characters: Character[];
@@ -68,6 +72,12 @@ interface CharacterStore {
   toggleExpertise: (id: string, skill: string) => Promise<void>;
   /** Show/hide a single feature (by featureKey) on the home Features widget. */
   toggleHiddenFeature: (id: string, key: string) => Promise<void>;
+  /** Set the picks for a "choose N features" class feature (Divine Order, …); applies/removes the option's proficiency grants. */
+  setFeatureChoice: (id: string, choiceId: string, optionIds: string[]) => Promise<void>;
+  /** Create or update a player-made item. Renaming keeps inventory entries pointing at it. Optionally adds it to the inventory. */
+  saveCustomItem: (id: string, item: CustomItem, addToInventory?: boolean) => Promise<void>;
+  /** Delete a player-made item and remove it from the inventory. */
+  removeCustomItem: (id: string, customItemId: string) => Promise<void>;
 }
 
 export const useCharacterStore = create<CharacterStore>()((set, get) => ({
@@ -78,6 +88,13 @@ export const useCharacterStore = create<CharacterStore>()((set, get) => ({
   load: async () => {
     const characters = await dexieCharacterRepository.list();
     set({ characters, loaded: true });
+    // 2024 characters that picked a classic subclass later reprinted for the 2024 class (the
+    // old picker offered both "Life Domain" PHB and XPHB) are moved to the reprint.
+    for (const c of characters) {
+      if (c.edition !== '5.5e') continue;
+      const classes = await upgradeReprintedSubclasses(c.classes);
+      if (classes) await get().mutate(c.id, ch => ({ ...ch, classes }));
+    }
   },
 
   setActive: (id) => set({ activeId: id }),
@@ -451,6 +468,55 @@ export const useCharacterStore = create<CharacterStore>()((set, get) => ({
       return {
         ...c,
         hiddenFeatures: hidden.includes(key) ? hidden.filter(k => k !== key) : [...hidden, key],
+      };
+    }),
+
+  setFeatureChoice: (id, choiceId, optionIds) =>
+    get().mutate(id, c => {
+      const before = featureChoiceTotals(c.featureChoices);
+      const featureChoices = { ...(c.featureChoices ?? {}), [choiceId]: optionIds };
+      const after = featureChoiceTotals(featureChoices);
+      // Proficiencies a class grants on its own must survive un-choosing an option that also grants them.
+      const classArmor = c.classes.flatMap(cl => getClassData(cl.classRef.name)?.startingProficiency.armor ?? []);
+      const classWeapons = c.classes.flatMap(cl => getClassData(cl.classRef.name)?.startingProficiency.weapons ?? []);
+      return {
+        ...c,
+        featureChoices,
+        proficiencies: {
+          ...c.proficiencies,
+          armor: reconcileGrantedProficiencies(c.proficiencies.armor, before.armor, after.armor, classArmor),
+          weapons: reconcileGrantedProficiencies(c.proficiencies.weapons, before.weapons, after.weapons, classWeapons),
+        },
+      };
+    }),
+
+  saveCustomItem: (id, item, addToInventory = false) =>
+    get().mutate(id, c => {
+      const items = c.customItems ?? [];
+      const previous = items.find(i => i.id === item.id);
+      const customItems = previous ? items.map(i => (i.id === item.id ? item : i)) : [...items, item];
+      let inventory = c.inventory;
+      if (previous && previous.name !== item.name) {
+        const oldKey = `${previous.name}|${CUSTOM_ITEM_SOURCE}`.toLowerCase();
+        inventory = inventory.map(inv =>
+          `${inv.itemRef.name}|${inv.itemRef.source}`.toLowerCase() === oldKey ? { ...inv, itemRef: customItemRef(item) } : inv);
+      }
+      const newKey = `${item.name}|${CUSTOM_ITEM_SOURCE}`.toLowerCase();
+      if (addToInventory && !inventory.some(inv => `${inv.itemRef.name}|${inv.itemRef.source}`.toLowerCase() === newKey)) {
+        inventory = [...inventory, { itemRef: customItemRef(item), quantity: 1, equipped: false }];
+      }
+      return { ...c, customItems, inventory };
+    }),
+
+  removeCustomItem: (id, customItemId) =>
+    get().mutate(id, c => {
+      const item = (c.customItems ?? []).find(i => i.id === customItemId);
+      if (!item) return c;
+      const key = `${item.name}|${CUSTOM_ITEM_SOURCE}`.toLowerCase();
+      return {
+        ...c,
+        customItems: (c.customItems ?? []).filter(i => i.id !== customItemId),
+        inventory: c.inventory.filter(inv => `${inv.itemRef.name}|${inv.itemRef.source}`.toLowerCase() !== key),
       };
     }),
 }));

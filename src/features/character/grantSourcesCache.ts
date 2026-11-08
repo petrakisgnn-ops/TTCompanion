@@ -1,6 +1,7 @@
 import type { GrantSource } from '../../domain/rules/grantedSpells';
 import type { RefId, Entry } from '../../domain/reference/types';
 import type { OptionalFeatureProgressionRow } from '../../domain/rules/optionalFeatures';
+import { findClassEntry, resolveClassJsonCopies, subclassOptions, subclassReprintFor, type ClassJson } from '../../domain/reference/classFeatures';
 
 /** Race/subrace records carry a bit more than spell grants — walk speed lives here too. */
 export interface RaceEntry extends GrantSource {
@@ -24,27 +25,21 @@ export interface SubclassEntry extends GrantSource {
   optionalfeatureProgression?: OptionalFeatureProgressionRow[];
 }
 
-interface ClassJsonSlice {
-  classRows: OptionalFeatureProgressionRow[];
-  subclass: SubclassEntry[];
-}
+const classJsonCache = new Map<string, Promise<ClassJson>>();
 
-const classJsonCache = new Map<string, Promise<ClassJsonSlice>>();
-
-function fetchClassJson(className: string): Promise<ClassJsonSlice> {
+/**
+ * One class's JSON (memoized), with same-file `_copy` records resolved — every consumer of
+ * class features/subclasses should go through this so they all see the same data.
+ */
+export function fetchClassJson(className: string): Promise<ClassJson> {
   const key = className.toLowerCase();
   if (!classJsonCache.has(key)) {
     classJsonCache.set(key, (async () => {
-      const res = await fetch(`${import.meta.env.BASE_URL}data/class/class-${key}.json`);
-      if (!res.ok) return { classRows: [], subclass: [] };
-      const json: {
-        class?: { optionalfeatureProgression?: OptionalFeatureProgressionRow[] }[];
-        subclass?: SubclassEntry[];
-      } = await res.json();
-      return {
-        classRows: json.class?.[0]?.optionalfeatureProgression ?? [],
-        subclass: json.subclass ?? [],
-      };
+      try {
+        const res = await fetch(`${import.meta.env.BASE_URL}data/class/class-${key}.json`);
+        if (!res.ok) return {};
+        return resolveClassJsonCopies(await res.json() as ClassJson);
+      } catch { return {}; }
     })());
   }
   return classJsonCache.get(key)!;
@@ -52,15 +47,21 @@ function fetchClassJson(className: string): Promise<ClassJsonSlice> {
 
 /** Fetches one class's JSON (memoized) and returns its subclass entries — used to resolve subclass spell grants (domain/oath/patron/circle). */
 export function fetchClassSubclasses(className: string): Promise<SubclassEntry[]> {
-  return fetchClassJson(className).then(j => j.subclass);
+  return fetchClassJson(className).then(j => (j.subclass ?? []) as SubclassEntry[]);
 }
 
 /** The class's own option-choice progression rows (Fighting Style, Invocations, ...) plus the chosen subclass's (Maneuvers, Arcane Shots, ...). */
 export async function fetchOptionalFeatureRows(
   className: string,
   subclass?: RefId,
+  classSource = 'PHB',
 ): Promise<{ classRows: OptionalFeatureProgressionRow[]; subclassRows: OptionalFeatureProgressionRow[] }> {
-  const { classRows, subclass: subs } = await fetchClassJson(className);
+  const json = await fetchClassJson(className);
+  // The file carries both the 2014 and 2024 class — use the character's version (2024 Warlock
+  // gets invocations at level 1, 2014 at level 2).
+  const cls = findClassEntry(json, className, classSource);
+  const classRows = (cls?.optionalfeatureProgression ?? []) as OptionalFeatureProgressionRow[];
+  const subs = (json.subclass ?? []) as SubclassEntry[];
   let subclassRows: OptionalFeatureProgressionRow[] = [];
   if (subclass) {
     const withRows = subs.filter(s => s.optionalfeatureProgression);
@@ -110,7 +111,11 @@ export async function fetchSubclassGrantSources(
     if (!cl.subclass) continue;
     const subs = await fetchClassSubclasses(cl.classRef.name);
     const withSpells = subs.filter(s => s.additionalSpells);
+    const classSource = cl.classRef.source;
     const match =
+      // The entry for this class version first (the 2024 class re-lists classic subclasses).
+      withSpells.find(s => s.name === cl.subclass!.name && s.source === cl.subclass!.source &&
+        ((s as { classSource?: string }).classSource ?? 'PHB') === classSource) ??
       withSpells.find(s => s.name === cl.subclass!.name && s.source === cl.subclass!.source) ??
       withSpells.find(s => s.name === cl.subclass!.name);
     if (match) {
@@ -141,4 +146,27 @@ export function fetchGrantSources(): Promise<GrantSources> {
     })();
   }
   return cached;
+}
+
+/** The subclasses a class version offers for an edition (reprinted classics hidden in 2024 — see subclassOptions). */
+export async function fetchSubclassOptions(className: string, classSource: string, edition: '5e' | '5.5e'): Promise<RefId[]> {
+  return subclassOptions(await fetchClassJson(className), classSource, edition);
+}
+
+/**
+ * For a 2024 character, swaps any classic subclass that was reprinted for the 2024 class
+ * (Life Domain PHB → XPHB, …) for its reprint, so features and domain spells follow the 2024
+ * rules. Returns the updated classes, or null when nothing changed.
+ */
+export async function upgradeReprintedSubclasses(
+  classes: { classRef: RefId; level: number; subclass?: RefId }[],
+): Promise<{ classRef: RefId; level: number; subclass?: RefId }[] | null> {
+  let changed = false;
+  const out = [];
+  for (const cl of classes) {
+    if (!cl.subclass) { out.push(cl); continue; }
+    const reprint = subclassReprintFor(await fetchClassJson(cl.classRef.name), cl.subclass, cl.classRef.source);
+    if (reprint) { changed = true; out.push({ ...cl, subclass: reprint }); } else out.push(cl);
+  }
+  return changed ? out : null;
 }

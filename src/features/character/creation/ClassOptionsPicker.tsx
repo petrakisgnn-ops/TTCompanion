@@ -43,14 +43,14 @@ export function ClassOptionsPicker({ data, patch }: Props) {
     (async () => {
       if (!data.classRef) { setGroups([]); return; }
       const { classRows, subclassRows } = await fetchOptionalFeatureRows(
-        data.classRef.name, data.subclassRef ?? undefined,
+        data.classRef.name, data.subclassRef ?? undefined, data.classRef.source,
       );
       const g = optionalFeatureSlots(classRows, subclassRows, data.level);
       const options = await fetchOptionalFeatures();
       if (!cancelled) { setGroups(g); setAllOptions(options); }
     })();
     return () => { cancelled = true; };
-  }, [data.classRef?.name, data.subclassRef?.name, data.subclassRef?.source, data.level]);
+  }, [data.classRef?.name, data.classRef?.source, data.subclassRef?.name, data.subclassRef?.source, data.level]);
 
   if (!data.classRef || groups.length === 0) return null;
 

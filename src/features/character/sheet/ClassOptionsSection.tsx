@@ -50,7 +50,7 @@ export function ClassOptionsSection({ character }: ClassOptionsSectionProps) {
     (async () => {
       const collected: GroupState[] = [];
       for (const cl of character.classes) {
-        const { classRows, subclassRows } = await fetchOptionalFeatureRows(cl.classRef.name, cl.subclass);
+        const { classRows, subclassRows } = await fetchOptionalFeatureRows(cl.classRef.name, cl.subclass, cl.classRef.source);
         for (const g of optionalFeatureSlots(classRows, subclassRows, cl.level)) {
           collected.push({ ...g, className: cl.classRef.name });
         }

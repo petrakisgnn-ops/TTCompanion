@@ -1,6 +1,7 @@
 import { CollapsibleFeature } from '../../../ui/CollapsibleFeature';
 import { useCharacterFeatures, featureKey, type FeatureRow } from '../useCharacterFeatures';
 import { ClassOptionsSection } from './ClassOptionsSection';
+import { FeatureChoicesSection } from './FeatureChoicesSection';
 import { WeaponMasterySection } from './WeaponMasterySection';
 import { useCharacterStore } from '../../../stores/characterStore';
 import type { Character } from '../../../domain/character/types';
@@ -51,6 +52,7 @@ export function FeaturesTab({ character }: FeaturesTabProps) {
 
   return (
     <div className="space-y-5">
+      <FeatureChoicesSection character={character} />
       <ClassOptionsSection character={character} />
       <WeaponMasterySection character={character} />
       {hasAnything && (

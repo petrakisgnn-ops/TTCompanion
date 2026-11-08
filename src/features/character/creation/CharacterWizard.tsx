@@ -6,13 +6,14 @@ import { maxHp } from '../../../domain/rules/spellSlots';
 import { recomputeAllResources } from '../../../domain/rules/resources';
 import { hpBonusPerLevel } from '../../../domain/rules/hpBonus';
 import { abilityMod } from '../../../domain/rules';
-import { getClassData, subclassLevel, asiLevelsUpTo, weaponMasteryCount, type AbilityKey } from '../../../domain/rules/classData';
+import { classSourceFor, getClassData, subclassLevel, asiLevelsUpTo, weaponMasteryCount, type AbilityKey } from '../../../domain/rules/classData';
 import { classHasSpellChoices } from '../../../domain/rules/spellcasting';
 import {
   parseFeatProficiencies, resolveFeatProficiencies,
   EMPTY_FEAT_PROF_SELECTION, type FeatProfSelection, type RawFeat,
 } from '../../../domain/rules/featRewards';
 import { CLASS_SKILLS } from '../../../domain/rules/classSkills';
+import { featureChoiceTotals } from '../../../domain/rules/featureChoices';
 import { useCharacterStore } from '../../../stores/characterStore';
 import { useSettingsStore } from '../../../stores/settingsStore';
 import { StepRace } from './StepRace';
@@ -94,6 +95,8 @@ export interface WizardData {
   asiChoices: AsiChoice[];
   /** Class/subclass option-choices (Fighting Style, Invocations, Elemental Disciplines, …) — see ClassOptionsPicker. */
   optionalFeatures: RefId[];
+  /** Picks for "choose one" class features (Divine Order, Primal Order, …) — see FeatureChoicesPicker. */
+  featureChoices: Record<string, string[]>;
   /** Weapons chosen for 2024 Weapon Mastery — see WeaponMasteryPicker. */
   masteredWeapons: RefId[];
   /** Spells learned (known casters + Wizard spellbook + cantrips) — see StepSpells. */
@@ -239,6 +242,7 @@ export function CharacterWizard() {
     raceSkillChoices: [],
     asiChoices: [],
     optionalFeatures: [],
+    featureChoices: {},
     masteredWeapons: [],
     knownSpells: [],
     preparedSpells: [],
@@ -313,13 +317,17 @@ export function CharacterWizard() {
   const handleFinish = async () => {
     const {
       raceRef, subraceRef, classRef, subclassRef, level, backgroundRef,
-      skills, expertise, languages, tools, raceBonusFeat, raceBonusFeatProfSel, asiChoices, optionalFeatures,
+      skills, expertise, languages, tools, raceBonusFeat, raceBonusFeatProfSel, asiChoices, optionalFeatures, featureChoices,
       masteredWeapons, knownSpells, preparedSpells,
       resolvedInventory, resolvedCurrency, equipmentNotes,
       alignment, personalityTrait, personalityIdeal, personalityBond, personalityFlaw,
       age, height, weight, eyes, skin, hair, name,
     } = data;
     if (!raceRef || !classRef || !backgroundRef) return;
+    // Re-derive in case the edition setting changed after the class was picked.
+    const classRefFinal: RefId = { name: classRef.name, source: classSourceFor(classRef.name, edition) };
+    // Weapon/armor training granted by feature choices (2024 Protector / Warden).
+    const choiceGrants = featureChoiceTotals(featureChoices);
 
     // Only slots the starting level actually earns count (guards against stale entries left
     // behind if the level was lowered after choices were made).
@@ -379,7 +387,7 @@ export function CharacterWizard() {
       edition,
       // finalSubclass drops a lingering pick if the level was lowered back below the
       // class's subclass level after choosing one.
-      classes: [{ classRef, level, subclass: finalSubclass }],
+      classes: [{ classRef: classRefFinal, level, subclass: finalSubclass }],
       race: raceRef,
       subrace: subraceRef,
       background: backgroundRef,
@@ -396,8 +404,8 @@ export function CharacterWizard() {
       proficiencies: {
         skills: mergedSkills,
         saves: cls?.saves ?? [],
-        weapons: cls?.startingProficiency.weapons ?? [],
-        armor: cls?.startingProficiency.armor ?? [],
+        weapons: [...new Set([...(cls?.startingProficiency.weapons ?? []), ...choiceGrants.weapons])],
+        armor: [...new Set([...(cls?.startingProficiency.armor ?? []), ...choiceGrants.armor])],
         tools: [...new Set([...tools, ...featProfs.tools])],
         languages: [...new Set([...languages, ...featProfs.languages])],
         // Expertise from picks + feats, kept to skills the character is actually proficient in.
@@ -410,6 +418,8 @@ export function CharacterWizard() {
       knownSpells,
       preparedSpells,
       optionalFeatures,
+      featureChoices,
+      customItems: [],
       // Keep only as many mastered weapons as the class/level actually grants.
       masteredWeapons: masteredWeapons.slice(0, weaponMasteryCount(classRef.name, level, edition)),
       inventory: resolvedInventory,

@@ -1,6 +1,7 @@
 import type { RefId } from '../reference/types';
 import type { DashboardLayout } from '../widgets/types';
 import type { Edition } from '../rules/edition';
+import type { CustomItem } from './customItems';
 
 export interface AbilityScores {
   str: number;
@@ -104,6 +105,13 @@ export interface Character {
   masteredWeapons: RefId[];
   inventory: InventoryItem[];
   feats: RefId[];
+  /**
+   * Picks for "choose one of these features" class features (2024 Divine Order / Primal Order,
+   * Totem Spirit, Hunter's Prey, …): choice id → chosen option ids. See domain/reference/classFeatures.
+   */
+  featureChoices?: Record<string, string[]>;
+  /** Player-made items (homebrew / items missing from the data). Inventory refs them as `{ name, source: CUSTOM_ITEM_SOURCE }`. */
+  customItems?: CustomItem[];
   /** Feature keys (see featureKey) the player has hidden from the home Features widget. Absent/empty = all shown. */
   hiddenFeatures?: string[];
   resources: ResourceTrack[];

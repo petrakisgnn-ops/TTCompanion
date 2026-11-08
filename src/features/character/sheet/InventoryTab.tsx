@@ -1,9 +1,13 @@
-﻿import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../../../data/db';
 import type { StoredItem } from '../../../data/db';
 import { useCharacterStore } from '../../../stores/characterStore';
 import type { Character } from '../../../domain/character/types';
+import { customItemRef, customItemSummary, isCustomRef, type CustomItem } from '../../../domain/character/customItems';
+import { useResolvedItems } from '../useResolvedItems';
+import { searchItems } from '../../../domain/reference/itemSearch';
+import { CustomItemSheet } from './CustomItemSheet';
 
 const RARITY_COLOR: Record<string, string> = {
   none:      'text-[var(--color-faint)]',
@@ -20,7 +24,11 @@ interface InventoryTabProps { character: Character }
 export function InventoryTab({ character }: InventoryTabProps) {
   const navigate = useNavigate();
   const { addInventoryItem, removeInventoryItem, setInventoryQuantity, toggleEquipped } = useCharacterStore();
-  const [resolved, setResolved] = useState<Map<string, StoredItem>>(new Map());
+  const resolved = useResolvedItems(character.inventory.map(i => i.itemRef), character.customItems);
+  // Custom item editor: null = closed, 'new' = create, otherwise the item being edited.
+  const [editing, setEditing] = useState<CustomItem | 'new' | null>(null);
+  const customItems = character.customItems ?? [];
+  const findCustom = (name: string) => customItems.find(c => c.name.toLowerCase() === name.toLowerCase());
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<StoredItem[]>([]);
   const [showSearch, setShowSearch] = useState(false);
@@ -29,17 +37,6 @@ export function InventoryTab({ character }: InventoryTabProps) {
   const itemKey = (ref: { name: string; source: string }) =>
     `${ref.name}|${ref.source}`.toLowerCase();
 
-  // Resolve inventory item refs → full item data
-  useEffect(() => {
-    if (character.inventory.length === 0) { setResolved(new Map()); return; }
-    const keys = character.inventory.map(i => itemKey(i.itemRef));
-    db.items.bulkGet(keys).then(items => {
-      const map = new Map<string, StoredItem>();
-      items.forEach(item => { if (item) map.set(item._key, item); });
-      setResolved(map);
-    });
-  }, [character.inventory]);
-
   // Debounced item search
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -47,10 +44,14 @@ export function InventoryTab({ character }: InventoryTabProps) {
     timer.current = setTimeout(async () => {
       const q = query.toLowerCase();
       const all = await db.items.orderBy('name').toArray();
-      setResults(all.filter(i => i.name.toLowerCase().includes(q)).slice(0, 10));
+      // Ranked (exact name first) and limited to the character's edition — see searchItems.
+      setResults(searchItems(all, q, { edition: character.edition, limit: 25 }));
     }, 200);
     return () => { if (timer.current) clearTimeout(timer.current); };
-  }, [query]);
+  }, [query, character.edition]);
+
+  const q = query.trim().toLowerCase();
+  const matchingCustom = q ? customItems.filter(c => c.name.toLowerCase().includes(q)) : [];
 
   const equipped = character.inventory.filter(i => i.equipped);
   const carried  = character.inventory.filter(i => !i.equipped);
@@ -72,17 +73,26 @@ export function InventoryTab({ character }: InventoryTabProps) {
           title={inv.equipped ? 'Equipped — tap to unequip' : 'Tap to equip'}
         />
 
-        {/* Name */}
+        {/* Name — custom items open their editor, reference items their detail page */}
         <button
-          onClick={() => navigate(`/items/${encodeURIComponent(key)}`)}
-          className="flex-1 text-left min-w-0"
+          onClick={() => {
+            const custom = isCustomRef(inv.itemRef) ? findCustom(inv.itemRef.name) : undefined;
+            if (custom) setEditing(custom);
+            else navigate(`/items/${encodeURIComponent(key)}`);
+          }}
+          className="flex-1 text-left min-w-0 min-h-[44px] flex flex-col justify-center"
         >
           <span className="text-sm font-medium truncate block">{inv.itemRef.name}</span>
-          {item && rarity !== 'none' && (
-            <span className={`text-xs ${RARITY_COLOR[rarity] ?? 'text-[var(--color-faint)]'}`}>
-              {item.rarity}
-            </span>
-          )}
+          <span className="text-xs flex gap-1.5 items-center min-w-0">
+            {item && rarity !== 'none' && (
+              <span className={RARITY_COLOR[rarity] ?? 'text-[var(--color-faint)]'}>{String(item.rarity)}</span>
+            )}
+            {isCustomRef(inv.itemRef) && (
+              <span className="text-[var(--color-faint)] truncate">
+                Custom{findCustom(inv.itemRef.name) && customItemSummary(findCustom(inv.itemRef.name)!) ? ` · ${customItemSummary(findCustom(inv.itemRef.name)!)}` : ''}
+              </span>
+            )}
+          </span>
         </button>
 
         {/* Quantity */}
@@ -121,12 +131,20 @@ export function InventoryTab({ character }: InventoryTabProps) {
         <span className="text-xs text-[var(--color-faint)]">
           {character.inventory.length} item{character.inventory.length !== 1 ? 's' : ''}
         </span>
-        <button
-          onClick={() => { setShowSearch(v => !v); setQuery(''); setResults([]); }}
-          className="text-xs text-amber-500 hover:text-amber-400 font-semibold"
-        >
-          {showSearch ? 'Done' : '+ Add Item'}
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setEditing('new')}
+            className="text-xs text-amber-500 hover:text-amber-400 font-semibold min-h-[44px]"
+          >
+            + Create Item
+          </button>
+          <button
+            onClick={() => { setShowSearch(v => !v); setQuery(''); setResults([]); }}
+            className="text-xs text-amber-500 hover:text-amber-400 font-semibold min-h-[44px]"
+          >
+            {showSearch ? 'Done' : '+ Add Item'}
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -141,7 +159,7 @@ export function InventoryTab({ character }: InventoryTabProps) {
             className="w-full bg-[var(--color-card)] rounded-xl px-4 py-2.5 text-sm outline-none outline-none focus:ring-1 focus:ring-[var(--color-gold-lt)] placeholder:text-[var(--color-faint)]"
           />
           {results.length > 0 && (
-            <div className="mt-1 bg-[var(--color-card)] rounded-xl overflow-hidden divide-y divide-[var(--color-border)]">
+            <div className="mt-1 bg-[var(--color-card)] rounded-xl overflow-y-auto max-h-80 divide-y divide-[var(--color-border)]">
               {results.map(item => (
                 <button
                   key={item._key}
@@ -160,8 +178,27 @@ export function InventoryTab({ character }: InventoryTabProps) {
               ))}
             </div>
           )}
-          {query.trim() && results.length === 0 && (
-            <p className="text-xs text-[var(--color-disabled)] mt-2 text-center">No items found</p>
+          {matchingCustom.length > 0 && (
+            <div className="mt-1 bg-[var(--color-card)] rounded-xl overflow-hidden divide-y divide-[var(--color-border)]">
+              {matchingCustom.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => { addInventoryItem(character.id, customItemRef(c)); setQuery(''); setResults([]); }}
+                  className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-white/5"
+                >
+                  <span className="text-sm">{c.name}</span>
+                  <span className="text-xs ml-2 shrink-0 text-[var(--color-faint)]">Custom</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {query.trim() && results.length === 0 && matchingCustom.length === 0 && (
+            <div className="mt-2 text-center space-y-1">
+              <p className="text-xs text-[var(--color-disabled)]">No items found</p>
+              <button onClick={() => setEditing('new')} className="text-xs text-amber-500 font-semibold min-h-[44px]">
+                Create “{query.trim()}” as a custom item
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -193,6 +230,14 @@ export function InventoryTab({ character }: InventoryTabProps) {
             {carried.map(renderItem)}
           </div>
         </div>
+      )}
+      {editing && (
+        <CustomItemSheet
+          character={character}
+          item={editing === 'new' ? undefined : editing}
+          initialName={editing === 'new' ? query.trim() : undefined}
+          onClose={() => setEditing(null)}
+        />
       )}
     </div>
   );

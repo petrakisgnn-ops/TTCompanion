@@ -1,22 +1,14 @@
 import { useEffect, useState } from 'react';
 import { extractFeatures, type FeatureEntry } from '../../domain/reference/features';
-import {
-  classFeaturesUpTo, subclassFeaturesUpTo,
-  type RawClassFeature, type RawSubclassFeature,
-} from '../../domain/reference/classFeatures';
+import { buildClassFeatures, type BuiltClassFeatures, type FeatureChoice } from '../../domain/reference/classFeatures';
+import { fetchClassJson } from './grantSourcesCache';
 import { buildRaceOptions, type RawRace, type RawSubrace } from '../../domain/reference/races';
-import type { Character } from '../../domain/character/types';
+import type { Character, ClassLevel } from '../../domain/character/types';
 
 interface BgEntry {
   name: string;
   source: string;
   entries?: FeatureEntry['entries'];
-}
-
-interface RawSubclass {
-  name: string;
-  shortName: string;
-  source: string;
 }
 
 export interface FeatureRow extends FeatureEntry {
@@ -42,7 +34,6 @@ export function featureKey(groupTitle: string, feature: FeatureRow): string {
 export function useCharacterFeatures(character: Character): FeatureGroup[] {
   const [raceFeatures, setRaceFeatures] = useState<FeatureRow[]>([]);
   const [bgFeatures, setBgFeatures] = useState<FeatureRow[]>([]);
-  const [classSections, setClassSections] = useState<FeatureGroup[]>([]);
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}data/races.json`)
@@ -68,54 +59,68 @@ export function useCharacterFeatures(character: Character): FeatureGroup[] {
       });
   }, [character.background]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      const sections: FeatureGroup[] = [];
-      for (const cl of character.classes) {
-        try {
-          const res = await fetch(`${import.meta.env.BASE_URL}data/class/class-${cl.classRef.name.toLowerCase()}.json`);
-          const json: {
-            classFeature?: RawClassFeature[];
-            subclass?: RawSubclass[];
-            subclassFeature?: RawSubclassFeature[];
-          } = await res.json();
-
-          const toRow = (f: { name: string; level: number; entries: FeatureRow['entries'] }): FeatureRow =>
-            ({ title: f.name, entries: f.entries, level: f.level, badge: `Lvl ${f.level}` });
-
-          const classFeats = classFeaturesUpTo(
-            json.classFeature, cl.classRef.name, cl.classRef.source, cl.level,
-          ).map(toRow);
-
-          let subclassFeats: FeatureRow[] = [];
-          if (cl.subclass) {
-            const sub = (json.subclass ?? []).find(
-              s => s.name === cl.subclass!.name && s.source === cl.subclass!.source,
-            );
-            if (sub) {
-              subclassFeats = subclassFeaturesUpTo(
-                json.subclassFeature, sub.shortName, sub.source, cl.level,
-              ).map(toRow);
-            }
-          }
-
-          const features = [...classFeats, ...subclassFeats].sort((a, b) => (a.level ?? 0) - (b.level ?? 0));
-          sections.push({ title: cl.classRef.name, features });
-        } catch {
-          // skip a class whose file fails to load — other sections still render
-        }
-      }
-      if (!cancelled) setClassSections(sections);
-    })();
-
-    return () => { cancelled = true; };
-  }, [character.classes]);
+  const built = useBuiltClassFeatures(character.classes, character.featureChoices);
+  const classSections: FeatureGroup[] = built.map(({ cl, result }) => ({
+    title: cl.classRef.name,
+    features: result.features.map(f => ({
+      title: f.name,
+      entries: f.entries,
+      level: f.level,
+      badge: f.optional ? `Lvl ${f.level} · Optional` : `Lvl ${f.level}`,
+    })),
+  }));
 
   return [
     { title: 'Race', features: raceFeatures },
     { title: 'Background', features: bgFeatures },
     ...classSections,
   ];
+}
+
+interface BuiltForClass {
+  cl: ClassLevel;
+  result: BuiltClassFeatures;
+}
+
+/**
+ * Resolves each class's (and chosen subclass's) features + feature choices from the class
+ * JSON. Shared by the features list and the Feature Choices picker so both agree.
+ */
+export function useBuiltClassFeatures(
+  classes: ClassLevel[],
+  featureChoices: Record<string, string[]> | undefined,
+): BuiltForClass[] {
+  const [built, setBuilt] = useState<BuiltForClass[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const out: BuiltForClass[] = [];
+      for (const cl of classes) {
+        const json = await fetchClassJson(cl.classRef.name);
+        out.push({
+          cl,
+          result: buildClassFeatures(json, {
+            className: cl.classRef.name,
+            classSource: cl.classRef.source,
+            subclass: cl.subclass,
+            level: cl.level,
+            choices: featureChoices,
+          }),
+        });
+      }
+      if (!cancelled) setBuilt(out);
+    })();
+    return () => { cancelled = true; };
+  }, [classes, featureChoices]);
+
+  return built;
+}
+
+/** Every "choose one of these features" point a character has reached, across all classes. */
+export function useFeatureChoices(
+  classes: ClassLevel[],
+  featureChoices: Record<string, string[]> | undefined,
+): FeatureChoice[] {
+  return useBuiltClassFeatures(classes, featureChoices).flatMap(b => b.result.choices);
 }

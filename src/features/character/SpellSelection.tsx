@@ -6,6 +6,7 @@ import { getClassData, getSubclassCaster } from '../../domain/rules/classData';
 import {
   isPreparedCaster, isKnownCaster, maxPreparedSpells, maxKnownSpells, maxKnownCantrips,
 } from '../../domain/rules/spellcasting';
+import { bonusCantrips } from '../../domain/rules/featureChoices';
 import { ClassSpellBrowser, type SpellActionBlock } from './sheet/ClassSpellBrowser';
 
 export interface SpellSelectionActions {
@@ -46,7 +47,8 @@ export function SpellSelection({ character, actions, expandedByClass = {}, linkT
     const abilityKey = (cdata.spellcastingAbility ?? subCaster?.ability) as keyof typeof mods | undefined;
     const classSpellMod = abilityKey ? mods[abilityKey] : 0;
 
-    const cantripCap = maxKnownCantrips(cname, classLevel, subclassName);
+    // + Thaumaturge / Magician bonus cantrip (2024 Divine/Primal Order).
+    const cantripCap = maxKnownCantrips(cname, classLevel, subclassName) + bonusCantrips(character.featureChoices, cname);
     const cantrips: SpellActionBlock | undefined = cantripCap > 0
       ? { verb: 'Learn', cap: cantripCap, onAdd: actions.addKnown, onRemove: actions.removeKnown }
       : undefined;

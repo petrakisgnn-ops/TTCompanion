@@ -9,6 +9,8 @@ export interface ItemArmor {
   ac: number;
   /** DEX contribution cap for worn armor (light = unlimited, medium = 2, heavy = 0). Ignored for shields. */
   dexCap?: number;
+  /** Magic AC bonus of this armor/shield (`bonusAc`, e.g. +1 Plate). */
+  bonus?: number;
 }
 
 /** Raw fields an item record carries for AC purposes (5etools `baseitem`/`item`). */
@@ -16,6 +18,15 @@ interface RawArmorItem {
   type?: unknown;
   ac?: unknown;
   dexterityMax?: unknown;
+  bonusAc?: unknown;
+}
+
+/** Parses a `bonusAc` value ("+1" or 1) — 0 when absent. */
+export function itemAcBonus(item: object): number {
+  const v = (item as { bonusAc?: unknown }).bonusAc;
+  if (typeof v === 'number') return v;
+  const n = typeof v === 'string' ? Number(v.replace(/\s/g, '')) : 0;
+  return Number.isFinite(n) ? n : 0;
 }
 
 /**
@@ -27,11 +38,12 @@ export function parseItemArmor(item: RawArmorItem): ItemArmor | null {
   const code = typeof item.type === 'string' ? item.type.split('|')[0] : '';
   const ac = typeof item.ac === 'number' ? item.ac : 0;
   const dexMax = typeof item.dexterityMax === 'number' ? item.dexterityMax : undefined;
+  const bonus = itemAcBonus(item) || undefined;
   switch (code) {
-    case 'LA': return { kind: 'light', ac, dexCap: dexMax };
-    case 'MA': return { kind: 'medium', ac, dexCap: dexMax ?? 2 };
-    case 'HA': return { kind: 'heavy', ac, dexCap: dexMax ?? 0 };
-    case 'S':  return { kind: 'shield', ac };
+    case 'LA': return { kind: 'light', ac, dexCap: dexMax, bonus };
+    case 'MA': return { kind: 'medium', ac, dexCap: dexMax ?? 2, bonus };
+    case 'HA': return { kind: 'heavy', ac, dexCap: dexMax ?? 0, bonus };
+    case 'S':  return { kind: 'shield', ac, bonus };
     default:   return null;
   }
 }
@@ -49,7 +61,13 @@ function acOverride(character: Character): number | undefined {
  * A shield adds its flat bonus on top of either. `worn`/`shield` are the resolved equipped items
  * (see useCharacterAc); omit them for the plain unarmored/override value.
  */
-export function armorClass(character: Character, worn?: ItemArmor | null, shield?: ItemArmor | null): number {
+export function armorClass(
+  character: Character,
+  worn?: ItemArmor | null,
+  shield?: ItemArmor | null,
+  /** AC bonus from other equipped items (Ring/Cloak of Protection, …). */
+  otherBonus = 0,
+): number {
   const override = acOverride(character);
   if (override != null) return override;
 
@@ -59,7 +77,7 @@ export function armorClass(character: Character, worn?: ItemArmor | null, shield
   let base: number;
   if (worn && worn.kind !== 'shield') {
     const dexPart = worn.dexCap === undefined ? dex : Math.min(dex, worn.dexCap);
-    base = worn.ac + dexPart;
+    base = worn.ac + dexPart + (worn.bonus ?? 0);
   } else {
     base = 10 + dex;
     for (const cl of character.classes) {
@@ -69,5 +87,5 @@ export function armorClass(character: Character, worn?: ItemArmor | null, shield
     }
   }
 
-  return base + (shield ? shield.ac : 0);
+  return base + (shield ? shield.ac + (shield.bonus ?? 0) : 0) + otherBonus;
 }

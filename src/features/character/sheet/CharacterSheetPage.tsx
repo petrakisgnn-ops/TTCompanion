@@ -13,6 +13,11 @@ import { KnownSpellsTab } from './KnownSpellsTab';
 import { SpellSelection } from '../SpellSelection';
 import { FeatsTab } from './FeatsTab';
 import { FeaturesTab } from './FeaturesTab';
+import { useFeatureChoices } from '../useCharacterFeatures';
+import { pendingChoices } from '../../../domain/reference/classFeatures';
+import type { ClassLevel } from '../../../domain/character/types';
+
+const NO_CLASSES: ClassLevel[] = [];
 import { LanguagesSection } from './LanguagesSection';
 import { CurrencySection } from './CurrencySection';
 import { ConditionsSection } from './ConditionsSection';
@@ -50,6 +55,7 @@ export function CharacterSheetPage() {
 
   useGrantedSpellSync(character);
   const resolvedAc = useCharacterAc(character);
+  const pendingFeatureChoices = pendingChoices(useFeatureChoices(character?.classes ?? NO_CLASSES, character?.featureChoices));
 
   // Subclass "expanded spell list" refs (a Warlock patron's spells, ...) per class —
   // unioned into that class's Learn/Prepare browser pool below.
@@ -220,6 +226,20 @@ export function CharacterSheetPage() {
           ))}
         </div>
       </div>
+
+      {/* Unmade "choose one" class feature picks (e.g. Divine Order after creation or a level-up) */}
+      {pendingFeatureChoices.length > 0 && tab !== 'features' && (
+        <button
+          onClick={() => setTab('features')}
+          className="mx-4 mt-3 flex items-center justify-between gap-3 bg-amber-500/10 border border-amber-500/40 rounded-xl px-4 py-2.5 text-left min-h-[44px]"
+        >
+          <span className="text-sm">
+            <span className="font-semibold text-amber-400">Choice needed: </span>
+            {pendingFeatureChoices.map(c => c.featureName).join(', ')}
+          </span>
+          <span className="text-xs font-semibold text-amber-400 shrink-0">Choose →</span>
+        </button>
+      )}
 
       {/* Concentration banner */}
       {character.concentration && (

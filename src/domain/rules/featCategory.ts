@@ -30,14 +30,73 @@ export function featLevelRequirement(prerequisite: unknown): number {
 
 interface FeatLike { category?: string; prerequisite?: unknown }
 
+/** 2024 classes whose own features include Fighting Style (the prerequisite of Fighting Style feats). */
+const FIGHTING_STYLE_CLASSES = new Set(['fighter', 'paladin', 'ranger']);
+
+function requiredFeatures(prerequisite: unknown): string[] {
+  if (!Array.isArray(prerequisite)) return [];
+  return prerequisite.flatMap(p => {
+    const feature = (p as { feature?: unknown }).feature;
+    return Array.isArray(feature) ? feature.filter((x): x is string => typeof x === 'string') : [];
+  });
+}
+
 /**
- * Whether a feat can be taken as an ASI/level-up feat choice. 2014 has no feat categories, so any
- * feat qualifies. 2024 restricts ASI feats to the **General** category and enforces its level
- * prerequisite (General feats require level 4). Origin feats (background/species) and Epic Boons
- * (level 19) are chosen through their own contexts, not the ASI slot.
+ * Whether a feat can be taken in place of an Ability Score Improvement. 2014 has no feat
+ * categories, so any feat qualifies. 2024 (PHB p. 41): the ASI feature grants "the Ability Score
+ * Improvement feat or another feat of your choice for which you qualify" — so General feats
+ * (level 4+), **Origin feats** (no prerequisite, e.g. Tough, Alert), Fighting Style feats (only
+ * with the Fighting Style feature — Fighter/Paladin/Ranger) and Epic Boons (level 19) all count.
+ * Other prerequisites (ability scores, spellcasting, armor training) are shown as advisory text
+ * (see featPrereqSummary), not enforced.
  */
-export function isAsiFeatEligible(feat: FeatLike, characterLevel: number, edition: Edition): boolean {
+export function isAsiFeatEligible(
+  feat: FeatLike,
+  characterLevel: number,
+  edition: Edition,
+  classNames: string[] = [],
+): boolean {
   if (edition !== '5.5e') return true;
-  if (featCategory(feat.category) !== 'general') return false;
-  return characterLevel >= featLevelRequirement(feat.prerequisite);
+  if (characterLevel < featLevelRequirement(feat.prerequisite)) return false;
+  switch (featCategory(feat.category)) {
+    case 'general':
+    case 'origin':
+      return true;
+    case 'epic-boon':
+      return characterLevel >= 19;
+    case 'fighting-style':
+      return !requiredFeatures(feat.prerequisite).includes('Fighting Style') ||
+        classNames.some(c => FIGHTING_STYLE_CLASSES.has(c.toLowerCase()));
+    default:
+      return true;
+  }
+}
+
+const ABILITY_NAMES: Record<string, string> = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' };
+
+/** A short human-readable list of a feat's non-level prerequisites, e.g. "Spellcasting", "STR or DEX 13". Null when none. */
+export function featPrereqSummary(prerequisite: unknown): string | null {
+  if (!Array.isArray(prerequisite) || prerequisite.length === 0) return null;
+  const parts: string[] = [];
+  for (const raw of prerequisite) {
+    const p = raw as Record<string, unknown>;
+    if (Array.isArray(p.ability)) {
+      const opts = (p.ability as Record<string, number>[]).flatMap(o =>
+        Object.entries(o).map(([k, v]) => `${ABILITY_NAMES[k] ?? k.toUpperCase()} ${v}`));
+      if (opts.length) parts.push(opts.join(' or '));
+    }
+    if (p.spellcasting || p.spellcasting2020 || p.spellcastingFeature) parts.push('Spellcasting');
+    if (Array.isArray(p.feature)) parts.push(...(p.feature as string[]));
+    if (Array.isArray(p.proficiency)) {
+      for (const prof of p.proficiency as Record<string, string>[]) {
+        if (prof.armor) parts.push(`${prof.armor} armor training`);
+        if (prof.weapon) parts.push(`${prof.weapon} weapon proficiency`);
+      }
+    }
+    const other = p.otherSummary as { entrySummary?: string } | undefined;
+    if (other?.entrySummary) parts.push(other.entrySummary);
+    if (typeof p.other === 'string') parts.push(p.other);
+  }
+  const unique = [...new Set(parts)];
+  return unique.length ? unique.join('; ') : null;
 }

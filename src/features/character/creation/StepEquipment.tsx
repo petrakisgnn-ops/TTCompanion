@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSettingsStore } from '../../../stores/settingsStore';
+import { isMundane, searchItems } from '../../../domain/reference/itemSearch';
+import { matchesEdition } from '../../../domain/rules/edition';
 import { db } from '../../../data/db';
 import type { StoredItem } from '../../../data/db';
 import type { WizardData } from './CharacterWizard';
@@ -65,6 +68,7 @@ const inputStyle =
 
 /** Debounced search scoped to a category filter — lets the player pick the concrete item for a "choose a martial weapon"-style grant. */
 function CategoryPicker({ types, onPick }: { types: string[]; onPick: (ref: RefId) => void }) {
+  const edition = useSettingsStore(s => s.edition);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<StoredItem[]>([]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -73,12 +77,14 @@ function CategoryPicker({ types, onPick }: { types: string[]; onPick: (ref: RefI
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
       const all = await db.items.orderBy('name').toArray();
-      const inCategory = all.filter(it => types.some(t => itemMatchesCategory(it, t)));
-      const q = query.toLowerCase();
-      setResults((q ? inCategory.filter(it => it.name.toLowerCase().includes(q)) : inCategory).slice(0, 12));
+      // Starting gear is mundane and from the character's edition (no "+1 Longsword" for "a martial weapon").
+      const inCategory = all.filter(it =>
+        isMundane(it) && matchesEdition(it.source, it.reprintedAs, edition) && types.some(t => itemMatchesCategory(it, t)));
+      const q = query.trim();
+      setResults((q ? searchItems(inCategory, q) : inCategory).slice(0, 12));
     }, 200);
     return () => { if (timer.current) clearTimeout(timer.current); };
-  }, [query, types]);
+  }, [query, types, edition]);
 
   return (
     <div className="space-y-1.5 mt-1">

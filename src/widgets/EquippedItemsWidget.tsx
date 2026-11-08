@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db } from '../data/db';
-import type { StoredItem } from '../data/db';
+import { useResolvedItems } from '../features/character/useResolvedItems';
 import { registerWidget } from './registry';
 import type { WidgetProps } from './registry';
 
@@ -15,21 +13,8 @@ const RARITY_COLOR: Record<string, string> = {
 
 function EquippedItemsWidget({ character }: WidgetProps) {
   const navigate = useNavigate();
-  const [resolved, setResolved] = useState<Map<string, StoredItem>>(new Map());
   const equipped = character.inventory.filter(i => i.equipped);
-
-  useEffect(() => {
-    if (equipped.length === 0) { setResolved(new Map()); return; }
-    const keys = character.inventory
-      .filter(i => i.equipped)
-      .map(i => `${i.itemRef.name}|${i.itemRef.source}`.toLowerCase());
-    db.items.bulkGet(keys).then(items => {
-      const map = new Map<string, StoredItem>();
-      items.forEach(item => { if (item) map.set(item._key, item); });
-      setResolved(map);
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [character.inventory]);
+  const resolved = useResolvedItems(equipped.map(i => i.itemRef), character.customItems);
 
   if (equipped.length === 0) {
     return (

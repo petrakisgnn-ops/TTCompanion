@@ -4,7 +4,7 @@ import { parseFeatAbility, type FeatAbilityGrant } from '../../../domain/rules/f
 import {
   parseFeatProficiencies, featProfChoicesComplete, type FeatProficiencies,
 } from '../../../domain/rules/featRewards';
-import { isAsiFeatEligible } from '../../../domain/rules/featCategory';
+import { featPrereqSummary, isAsiFeatEligible } from '../../../domain/rules/featCategory';
 import { matchesEdition } from '../../../domain/rules/edition';
 import { asiLevelsUpTo, type AbilityKey } from '../../../domain/rules/classData';
 import { useSettingsStore } from '../../../stores/settingsStore';
@@ -129,19 +129,18 @@ export function AsiChoicesSection({ className, level, data, patch }: Props) {
 
   const featResults = (i: number): FeatEntry[] => {
     const q = (featQuery[i] ?? '').trim().toLowerCase();
-    if (!q) return [];
     const selfKey = (() => { const f = slotAt(i).feat; return f ? `${f.name}|${f.source}`.toLowerCase() : ''; })();
     return allFeats
       .filter(f => {
         const key = `${f.name}|${f.source}`.toLowerCase();
-        return f.name.toLowerCase().includes(q) &&
+        return (!q || f.name.toLowerCase().includes(q)) &&
           f.name.toLowerCase() !== 'ability score improvement' &&
           (!takenFeatKeys.has(key) || key === selfKey) &&
-          // Show feats of the chosen edition, and in 2024 only General feats gated by this slot's level.
+          // Feats of the chosen edition that this slot can take (2024: General/Origin, level-gated).
           matchesEdition(f.source, f.reprintedAs, edition) &&
-          isAsiFeatEligible(f, slotLevels[i], edition);
+          isAsiFeatEligible(f, slotLevels[i], edition, [className]);
       })
-      .slice(0, 8);
+      .sort((a, b) => a.name.localeCompare(b.name));
   };
 
   return (
@@ -312,14 +311,19 @@ export function AsiChoicesSection({ className, level, data, patch }: Props) {
                         className="w-full bg-[var(--color-raised)] rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-[var(--color-gold-lt)] placeholder:text-[var(--color-faint)]"
                       />
                       {featResults(i).length > 0 && (
-                        <div className="bg-[var(--color-raised)] rounded-lg overflow-hidden divide-y divide-[var(--color-border)]">
+                        <div className="bg-[var(--color-raised)] rounded-lg overflow-y-auto max-h-72 divide-y divide-[var(--color-border)]">
                           {featResults(i).map(feat => (
                             <button
                               key={`${feat.name}|${feat.source}`}
                               onClick={() => { update(i, { feat: { name: feat.name, source: feat.source }, featAbility: null, featProfSel: { skills: [], tools: [], languages: [], expertise: [] } }); setFeatQuery(q => ({ ...q, [i]: '' })); }}
-                              className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-white/5"
+                              className="w-full flex items-center justify-between px-3 py-2 min-h-[44px] text-left hover:bg-white/5"
                             >
-                              <span className="text-sm font-medium">{feat.name}</span>
+                              <span className="min-w-0">
+                                <span className="text-sm font-medium block">{feat.name}</span>
+                                {featPrereqSummary(feat.prerequisite) && (
+                                  <span className="text-xs text-[var(--color-faint)] block">Req: {featPrereqSummary(feat.prerequisite)}</span>
+                                )}
+                              </span>
                               <span className="text-xs text-[var(--color-disabled)] ml-2 shrink-0">{feat.source}</span>
                             </button>
                           ))}

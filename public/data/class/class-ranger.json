@@ -1,4 +1,4 @@
-﻿{
+{
 	"_meta": {
 		"internalCopies": [
 			"subclass"
@@ -58,15 +58,6 @@
 				}
 			],
 			"startingProficiencies": {
-				"armor": [
-					"light",
-					"medium",
-					"shield"
-				],
-				"weapons": [
-					"simple",
-					"martial"
-				],
 				"skills": [
 					{
 						"choose": {
@@ -82,6 +73,22 @@
 							],
 							"count": 3
 						}
+					}
+				],
+				"weapons": [
+					"simple",
+					"martial"
+				],
+				"armor": [
+					"light",
+					"medium",
+					"shield"
+				],
+				"armorProficiencies": [
+					{
+						"light": true,
+						"medium": true,
+						"shield": true
 					}
 				]
 			},
@@ -139,11 +146,6 @@
 					"wis": 13
 				},
 				"proficienciesGained": {
-					"armor": [
-						"light",
-						"medium",
-						"shield"
-					],
 					"skills": [
 						{
 							"choose": {
@@ -164,6 +166,18 @@
 					"weapons": [
 						"simple",
 						"martial"
+					],
+					"armor": [
+						"light",
+						"medium",
+						"shield"
+					],
+					"armorProficiencies": [
+						{
+							"light": true,
+							"medium": true,
+							"shield": true
+						}
 					]
 				}
 			},
@@ -514,15 +528,6 @@
 				}
 			],
 			"startingProficiencies": {
-				"armor": [
-					"light",
-					"medium",
-					"shield"
-				],
-				"weapons": [
-					"simple",
-					"martial"
-				],
 				"skills": [
 					{
 						"choose": {
@@ -539,7 +544,27 @@
 							"count": 3
 						}
 					}
+				],
+				"weapons": [
+					"simple",
+					"martial"
+				],
+				"armor": [
+					"light",
+					"medium",
+					"shield"
+				],
+				"armorProficiencies": [
+					{
+						"light": true,
+						"medium": true,
+						"shield": true
+					}
 				]
+			},
+			"itemMasteries": true,
+			"itemMasteriesProgression": {
+				"1": 2
 			},
 			"startingEquipment": {
 				"additionalFromBackground": true,
@@ -587,14 +612,6 @@
 			},
 			"multiclassing": {
 				"proficienciesGained": {
-					"weapons": [
-						"martial"
-					],
-					"armor": [
-						"light",
-						"medium",
-						"shield"
-					],
 					"skills": [
 						{
 							"choose": {
@@ -610,6 +627,21 @@
 								],
 								"count": 1
 							}
+						}
+					],
+					"weapons": [
+						"martial"
+					],
+					"armor": [
+						"light",
+						"medium",
+						"shield"
+					],
+					"armorProficiencies": [
+						{
+							"light": true,
+							"medium": true,
+							"shield": true
 						}
 					]
 				}
@@ -752,11 +784,11 @@
 				{
 					"title": "Spell Slots per Spell Level",
 					"colLabels": [
-						"{@filter 1st|spells|level=1|class=ranger}",
-						"{@filter 2nd|spells|level=2|class=ranger}",
-						"{@filter 3rd|spells|level=3|class=ranger}",
-						"{@filter 4th|spells|level=4|class=ranger}",
-						"{@filter 5th|spells|level=5|class=ranger}"
+						"{@filter 1|spells|level=1|class=ranger}",
+						"{@filter 2|spells|level=2|class=ranger}",
+						"{@filter 3|spells|level=3|class=ranger}",
+						"{@filter 4|spells|level=4|class=ranger}",
+						"{@filter 5|spells|level=5|class=ranger}"
 					],
 					"rowsSpellProgression": [
 						[
@@ -1555,6 +1587,7 @@
 			"source": "RHW",
 			"className": "Ranger",
 			"classSource": "XPHB",
+			"page": 20,
 			"edition": "one",
 			"additionalSpells": [
 				{
@@ -1599,8 +1632,8 @@
 				"{@i 1st-level ranger {@variantrule optional class features|tce|optional feature}, which replaces the Natural Explorer feature}",
 				"You are an unsurpassed explorer and survivor, both in the wilderness and in dealing with others on your travels. You gain the Canny benefit below, and you gain an additional benefit below when you reach 6th level and 10th level in this class.",
 				{
-					"name": "Canny",
 					"type": "entries",
+					"name": "Canny",
 					"entries": [
 						"Choose one of your skill proficiencies. Your proficiency bonus is doubled for any ability check you make that uses the chosen skill.",
 						"You can also speak, read, and write two additional languages of your choice."
@@ -1856,7 +1889,7 @@
 			"level": 4,
 			"entries": [
 				"When you reach 4th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature.",
-				"If your DM allows the use of feats, you may instead take a feat."
+				"If your DM allows the use of feats, you may instead take a {@5etools feat|feats.html}."
 			]
 		},
 		{
@@ -1938,7 +1971,7 @@
 			"level": 8,
 			"entries": [
 				"When you reach 8th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature.",
-				"If your DM allows the use of feats, you may instead take a feat."
+				"If your DM allows the use of feats, you may instead take a {@5etools feat|feats.html}."
 			]
 		},
 		{
@@ -2035,7 +2068,7 @@
 			"level": 12,
 			"entries": [
 				"When you reach 12th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature.",
-				"If your DM allows the use of feats, you may instead take a feat."
+				"If your DM allows the use of feats, you may instead take a {@5etools feat|feats.html}."
 			]
 		},
 		{
@@ -2084,7 +2117,7 @@
 			"level": 16,
 			"entries": [
 				"When you reach 16th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature.",
-				"If your DM allows the use of feats, you may instead take a feat."
+				"If your DM allows the use of feats, you may instead take a {@5etools feat|feats.html}."
 			]
 		},
 		{
@@ -2109,7 +2142,7 @@
 			"level": 19,
 			"entries": [
 				"When you reach 19th level, you can increase one ability score of your choice by 2, or you can increase two ability scores of your choice by 1. As normal, you can't increase an ability score above 20 using this feature.",
-				"If your DM allows the use of feats, you may instead take a feat."
+				"If your DM allows the use of feats, you may instead take a {@5etools feat|feats.html}."
 			]
 		},
 		{
@@ -2284,7 +2317,7 @@
 			"classSource": "XPHB",
 			"level": 4,
 			"entries": [
-				"You gain the {@feat Ability Score Improvement|XPHB} feat or another feat of your choice for which you qualify. You gain this feature again at Ranger levels 8, 12, and 16."
+				"You gain the {@feat Ability Score Improvement|XPHB} feat or another {@5etools feat|feats.html} of your choice for which you qualify. You gain this feature again at Ranger levels 8, 12, and 16."
 			]
 		},
 		{
@@ -2336,7 +2369,7 @@
 			"classSource": "XPHB",
 			"level": 8,
 			"entries": [
-				"You gain the {@feat Ability Score Improvement|XPHB} feat or another feat of your choice for which you qualify."
+				"You gain the {@feat Ability Score Improvement|XPHB} feat or another {@5etools feat|feats.html} of your choice for which you qualify."
 			]
 		},
 		{
@@ -2407,7 +2440,7 @@
 			"classSource": "XPHB",
 			"level": 12,
 			"entries": [
-				"You gain the {@feat Ability Score Improvement|XPHB} feat or another feat of your choice for which you qualify."
+				"You gain the {@feat Ability Score Improvement|XPHB} feat or another {@5etools feat|feats.html} of your choice for which you qualify."
 			]
 		},
 		{
@@ -2460,7 +2493,7 @@
 			"classSource": "XPHB",
 			"level": 16,
 			"entries": [
-				"You gain the {@feat Ability Score Improvement|XPHB} feat or another feat of your choice for which you qualify."
+				"You gain the {@feat Ability Score Improvement|XPHB} feat or another {@5etools feat|feats.html} of your choice for which you qualify."
 			]
 		},
 		{
@@ -2499,7 +2532,7 @@
 			"classSource": "XPHB",
 			"level": 19,
 			"entries": [
-				"You gain an {@filter Epic Boon feat|feats|category=EB} or another feat of your choice for which you qualify. {@feat Boon of Dimensional Travel|XPHB} is recommended."
+				"You gain an {@filter Epic Boon feat|feats|category=EB} or another {@5etools feat|feats.html} of your choice for which you qualify. {@feat Boon of Dimensional Travel|XPHB} is recommended."
 			]
 		},
 		{
@@ -3330,7 +3363,7 @@
 			"entries": [
 				"{@i 15th-level Fey Wanderer feature}",
 				"You can slip in and out of the Feywild to move in a blink of an eye: you can cast {@spell misty step} without expending a spell slot. You can do so a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a long rest.",
-				"In addition, whenever you cast {@i misty step}, you can bring along one willing creature you can see within 5 feet of you. That creature teleports to an unoccupied space of your choice within 5 feet of your destination space."
+				"In addition, whenever you cast {@spell misty step}, you can bring along one willing creature you can see within 5 feet of you. That creature teleports to an unoccupied space of your choice within 5 feet of your destination space."
 			]
 		},
 		{
@@ -4146,6 +4179,7 @@
 		{
 			"name": "Hollow Warden",
 			"source": "RHW",
+			"page": 20,
 			"className": "Ranger",
 			"classSource": "XPHB",
 			"subclassShortName": "Hollow Warden",
@@ -4167,6 +4201,7 @@
 		{
 			"name": "Hollow Warden Spells",
 			"source": "RHW",
+			"page": 20,
 			"className": "Ranger",
 			"classSource": "XPHB",
 			"subclassShortName": "Hollow Warden",
@@ -4213,13 +4248,14 @@
 		{
 			"name": "Wrath of the Wild",
 			"source": "RHW",
+			"page": 21,
 			"className": "Ranger",
 			"classSource": "XPHB",
 			"subclassShortName": "Hollow Warden",
 			"subclassSource": "RHW",
 			"level": 3,
 			"entries": [
-				"You draw power from the strange and ancient horrors of the land, causing you to sprout unnatural growths, such as bloody antlers or putrid fangs, or causing your shadow to lengthen or twist around you. As a {@variantrule Bonus Action|XPHB}, you can expend a use of Favored {@variantrule Enemy|XPHB} to transform into a ghastly form, gaining the following benefits for 1 minute or until you have the {@condition Incapacitated|XPHB} condition, die, or end the transformation (no action required).",
+				"You draw power from the strange and ancient horrors of the land, causing you to sprout unnatural growths, such as bloody antlers or putrid fangs, or causing your shadow to lengthen or twist around you. As a {@variantrule Bonus Action|XPHB}, you can expend a use of {@classFeature Favored Enemy|Ranger|XPHB|1} to transform into a ghastly form, gaining the following benefits for 1 minute or until you have the {@condition Incapacitated|XPHB} condition, die, or end the transformation (no action required).",
 				{
 					"type": "entries",
 					"name": "Ancient Armor",
@@ -4246,6 +4282,7 @@
 		{
 			"name": "Hungering Might",
 			"source": "RHW",
+			"page": 21,
 			"className": "Ranger",
 			"classSource": "XPHB",
 			"subclassShortName": "Hollow Warden",
@@ -4260,6 +4297,7 @@
 		{
 			"name": "Rot and Violence",
 			"source": "RHW",
+			"page": 21,
 			"className": "Ranger",
 			"classSource": "XPHB",
 			"subclassShortName": "Hollow Warden",
@@ -4287,6 +4325,7 @@
 		{
 			"name": "Ancient Might",
 			"source": "RHW",
+			"page": 21,
 			"className": "Ranger",
 			"classSource": "XPHB",
 			"subclassShortName": "Hollow Warden",
@@ -4479,23 +4518,23 @@
 					],
 					"rows": [
 						[
-							"3rd",
+							"3",
 							"{@spell Charm Person|XPHB}"
 						],
 						[
-							"5th",
+							"5",
 							"{@spell Misty Step|XPHB}"
 						],
 						[
-							"9th",
+							"9",
 							"{@spell Summon Fey|XPHB}"
 						],
 						[
-							"13th",
+							"13",
 							"{@spell Dimension Door|XPHB}"
 						],
 						[
-							"17th",
+							"17",
 							"{@spell Mislead|XPHB}"
 						]
 					]
@@ -4685,23 +4724,23 @@
 					],
 					"rows": [
 						[
-							"3rd",
+							"3",
 							"{@spell Disguise Self|XPHB}"
 						],
 						[
-							"5th",
+							"5",
 							"{@spell Rope Trick|XPHB}"
 						],
 						[
-							"9th",
+							"9",
 							"{@spell Fear|XPHB}"
 						],
 						[
-							"13th",
+							"13",
 							"{@spell Greater Invisibility|XPHB}"
 						],
 						[
-							"17th",
+							"17",
 							"{@spell Seeming|XPHB}"
 						]
 					]

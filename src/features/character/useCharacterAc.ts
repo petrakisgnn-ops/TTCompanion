@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { db } from '../../data/db';
-import { refKey } from '../../domain/reference/types';
 import { characterAc } from '../../domain/rules';
-import { armorClass, parseItemArmor, type ItemArmor } from '../../domain/rules/ac';
+import { armorClass, itemAcBonus, parseItemArmor, type ItemArmor } from '../../domain/rules/ac';
+import { resolveItems } from './useResolvedItems';
 import type { Character } from '../../domain/character/types';
 
 /**
@@ -22,16 +21,20 @@ export function useCharacterAc(character: Character | undefined): number {
         if (!cancelled) setAc(characterAc(character));
         return;
       }
-      const items = await db.items.bulkGet(equipped.map(i => refKey(i.itemRef)));
+      const items = [...(await resolveItems(equipped.map(i => i.itemRef), character.customItems)).values()];
       const armors = items
-        .map(item => (item ? parseItemArmor(item) : null))
+        .map(item => parseItemArmor(item))
         .filter((a): a is ItemArmor => a !== null);
       const worn = armors.find(a => a.kind !== 'shield') ?? null;
       const shield = armors.find(a => a.kind === 'shield') ?? null;
-      if (!cancelled) setAc(armorClass(character, worn, shield));
+      // Non-armor items with an AC bonus (Ring / Cloak of Protection, custom items, …).
+      const otherBonus = items
+        .filter(item => parseItemArmor(item) === null)
+        .reduce((sum, item) => sum + itemAcBonus(item), 0);
+      if (!cancelled) setAc(armorClass(character, worn, shield, otherBonus));
     })();
     return () => { cancelled = true; };
-  }, [character?.inventory, character?.abilityScores, character?.classes, character?.dashboard.widgets]);
+  }, [character?.inventory, character?.customItems, character?.abilityScores, character?.classes, character?.dashboard.widgets]);
 
   return ac;
 }

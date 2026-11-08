@@ -1,66 +1,18 @@
-﻿import { useEffect, useState } from 'react';
 import { registerWidget } from './registry';
 import type { WidgetProps } from './registry';
-import { db } from '../data/db';
-import { abilityMod, proficiencyBonus, totalLevel } from '../domain/rules';
-import { refKey } from '../domain/reference/types';
-import type { StoredItem } from '../data/db';
-
-interface AttackEntry {
-  name: string;
-  atkBonus: number;
-  dmg: string;
-  type: string;
-}
-
-function isFinesseOrRanged(item: StoredItem): boolean {
-  const props = (item.property as string[] | undefined) ?? [];
-  // F = finesse, A = ammunition (ranged)
-  return props.includes('F') || props.includes('A') || props.includes('T'); // T = thrown
-}
+import { proficiencyBonus, totalLevel } from '../domain/rules';
+import { weaponAttack, type WeaponAttack } from '../domain/rules/attacks';
+import { useResolvedItems } from '../features/character/useResolvedItems';
 
 function AttacksWidget({ character }: WidgetProps) {
-  const [attacks, setAttacks] = useState<AttackEntry[]>([]);
+  const pb = proficiencyBonus(totalLevel(character.classes));
+  const equippedRefs = character.inventory.filter(i => i.equipped).map(i => i.itemRef);
+  const resolved = useResolvedItems(equippedRefs, character.customItems);
 
-  const lvl = totalLevel(character.classes);
-  const pb  = proficiencyBonus(lvl);
-  const strMod = abilityMod(character.abilityScores.str);
-  const dexMod = abilityMod(character.abilityScores.dex);
-
-  useEffect(() => {
-    const equipped = character.inventory.filter(i => i.equipped);
-    if (equipped.length === 0) { setAttacks([]); return; }
-
-    const keys = equipped.map(i => refKey(i.itemRef));
-    db.items.bulkGet(keys).then(items => {
-      const entries: AttackEntry[] = [];
-
-      items.forEach(item => {
-        if (!item) return;
-        // Only weapons have weaponCategory
-        if (!item.weaponCategory) return;
-
-        const finesse = isFinesseOrRanged(item);
-        // For finesse/ranged pick the better of STR/DEX; otherwise STR
-        const baseMod = finesse ? Math.max(strMod, dexMod) : strMod;
-        const atkBonus = baseMod + pb;
-
-        const dmg1   = (item.dmg1   as string | undefined) ?? '—';
-        const dmgType = (item.dmgType as string | undefined) ?? '';
-        // Abbreviate damage type to 4 chars (slashing→slas, etc.)
-        const shortType = dmgType.slice(0, 4);
-
-        entries.push({
-          name: item.name,
-          atkBonus,
-          dmg: baseMod !== 0 ? `${dmg1}${baseMod >= 0 ? '+' : ''}${baseMod}` : dmg1,
-          type: shortType,
-        });
-      });
-
-      setAttacks(entries);
-    });
-  }, [character.inventory, character.abilityScores, lvl]);
+  // Weapon math (ability, proficiency, magic bonuses) lives in domain/rules/attacks.
+  const attacks: WeaponAttack[] = [...resolved.values()]
+    .map(item => weaponAttack(item, character.abilityScores, pb))
+    .filter((a): a is WeaponAttack => a !== null);
 
   if (attacks.length === 0) {
     return (
@@ -79,12 +31,15 @@ function AttacksWidget({ character }: WidgetProps) {
       </div>
       {attacks.map((a, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-card-inner)', borderRadius: 10, padding: '9px 11px' }}>
-          <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--color-text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
+          <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
+            {a.extraDamage && <span style={{ fontSize: 11, color: 'var(--color-faint)' }}>+ {a.extraDamage}</span>}
+          </span>
           <span style={{ fontFamily: "'Spline Sans Mono', monospace", fontSize: 13, fontWeight: 700, color: '#d08c4a', width: 44, textAlign: 'center' }}>
-            {a.atkBonus >= 0 ? `+${a.atkBonus}` : a.atkBonus}
+            {a.attackBonus >= 0 ? `+${a.attackBonus}` : a.attackBonus}
           </span>
           <span style={{ fontFamily: "'Spline Sans Mono', monospace", fontSize: 12, color: 'var(--color-muted)', width: 68, textAlign: 'right' }}>
-            {a.dmg} {a.type}
+            {a.damage} {a.damageType.slice(0, 4)}
           </span>
         </div>
       ))}

@@ -1,33 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useCharacterStore } from '../../../stores/characterStore';
-import { useSettingsStore, type Edition } from '../../../stores/settingsStore';
+import { useSettingsStore } from '../../../stores/settingsStore';
 import type { Character, AbilityScores } from '../../../domain/character/types';
 import type { RefId } from '../../../domain/reference/types';
-import { CLASSES, subclassLevel, meetsPrereq, type ClassData, type AbilityPrereq } from '../../../domain/rules/classData';
+import { CLASSES, classSourceFor, subclassLevel, meetsPrereq, type ClassData, type AbilityPrereq } from '../../../domain/rules/classData';
 import { CLASS_SKILLS, ALL_SKILLS } from '../../../domain/rules/classSkills';
-import { matchesEdition } from '../../../domain/rules/edition';
 import { abilityMod } from '../../../domain/rules';
+import { fetchSubclassOptions } from '../grantSourcesCache';
 
-interface RawSubclass { name: string; source: string; reprintedAs?: unknown }
 
-async function fetchSubclasses(className: string, edition: Edition): Promise<RefId[]> {
-  try {
-    const res = await fetch(`${import.meta.env.BASE_URL}data/class/class-${className.toLowerCase()}.json`);
-    if (!res.ok) return [];
-    const json = await res.json() as { subclass?: RawSubclass[] };
-    const seen = new Set<string>();
-    const result: RefId[] = [];
-    for (const s of json.subclass ?? []) {
-      if (s.reprintedAs) continue;
-      if (!matchesEdition(s.source, null, edition)) continue;
-      const key = `${s.name}|${s.source}`.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      result.push({ name: s.name, source: s.source });
-    }
-    return result;
-  } catch { return []; }
-}
 
 function prereqLabel(p: AbilityPrereq): string {
   const parts: string[] = [];
@@ -65,7 +46,7 @@ export function AddClassSheet({ character, onClose }: AddClassSheetProps) {
     setChosenSkill(null);
     setSubclasses([]);
     if (!selected || !needsSubclassNow) return;
-    fetchSubclasses(selected.name, edition).then(setSubclasses);
+    fetchSubclassOptions(selected.name, classSourceFor(selected.name, character.edition), character.edition).then(setSubclasses);
   }, [selected?.name, needsSubclassNow, edition]);
 
   if (!selected) {
@@ -125,7 +106,7 @@ export function AddClassSheet({ character, onClose }: AddClassSheetProps) {
 
   const confirm = async () => {
     await addClass(character.id, {
-      classRef: { name: selected.name, source: selected.source },
+      classRef: { name: selected.name, source: classSourceFor(selected.name, character.edition) },
       hpGain,
       subclass: chosenSubclass ?? undefined,
       proficiencies: {

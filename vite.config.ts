@@ -44,10 +44,11 @@ export default defineConfig({
             urlPattern: /\/data\/.*\.json$/,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'reference-data-v1',
+              // Bump the version whenever public/data is replaced (CacheFirst would keep serving the old files).
+              cacheName: 'reference-data-v2',
               cacheableResponse: { statuses: [0, 200] },
               expiration: {
-                maxEntries: 200,
+                maxEntries: 400,
                 maxAgeSeconds: 60 * 60 * 24 * 90, // 90 days
               },
             },

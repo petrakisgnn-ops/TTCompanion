@@ -145,6 +145,17 @@ export function getClassData(name: string): ClassData | undefined {
 }
 
 /**
+ * The reference source of a class for an edition: the 2024 PHB (XPHB) reprint of every PHB
+ * class for 5.5e, the class's own source otherwise. This is what a character's
+ * `classRef.source` should hold, and what selects the right feature list / starting kit
+ * out of the class JSON (which carries both versions).
+ */
+export function classSourceFor(className: string, edition: Edition): string {
+  const source = getClassData(className)?.source ?? 'PHB';
+  return edition === '5.5e' && source === 'PHB' ? 'XPHB' : source;
+}
+
+/**
  * Subclasses that grant spellcasting to an otherwise non-casting class (PHB
  * third-casters). Tables hardcoded from class-fighter/rogue.json subclass entries
  * (index 0 = class level 1); their spell list is the Wizard list.

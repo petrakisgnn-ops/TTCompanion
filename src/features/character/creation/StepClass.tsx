@@ -1,40 +1,18 @@
 import { useEffect, useState } from 'react';
-import { CLASSES, subclassLevel } from '../../../domain/rules/classData';
-import { matchesEdition } from '../../../domain/rules/edition';
-import { useSettingsStore, type Edition } from '../../../stores/settingsStore';
+import { CLASSES, classSourceFor, subclassLevel } from '../../../domain/rules/classData';
+import { useSettingsStore } from '../../../stores/settingsStore';
 import type { WizardData } from './CharacterWizard';
 import type { RefId } from '../../../domain/reference/types';
 import { subclassLabel } from '../subclassLabel';
+import { FeatureChoicesPicker } from './FeatureChoicesPicker';
+import { fetchSubclassOptions } from '../grantSourcesCache';
 
 interface StepClassProps {
   data: WizardData;
   patch: (p: Partial<WizardData>) => void;
 }
 
-interface RawSubclass { name: string; source: string; reprintedAs?: unknown }
 
-async function fetchSubclasses(className: string, edition: Edition): Promise<RefId[]> {
-  try {
-    const res = await fetch(`${import.meta.env.BASE_URL}data/class/class-${className.toLowerCase()}.json`);
-    if (!res.ok) return [];
-    const json = await res.json() as { subclass?: RawSubclass[] };
-    // The raw data lists every subclass more than once: a "reprintedAs" stub pointing at its
-    // 2024 successor (skip — never meant to display standalone), plus separate PHB and XPHB
-    // entries that share the exact same display name (e.g. "Life Domain" in both) — filter to
-    // the active edition the same way Race/Background already do, then dedupe by name+source.
-    const seen = new Set<string>();
-    const result: RefId[] = [];
-    for (const s of json.subclass ?? []) {
-      if (s.reprintedAs) continue;
-      if (!matchesEdition(s.source, null, edition)) continue;
-      const key = `${s.name}|${s.source}`.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      result.push({ name: s.name, source: s.source });
-    }
-    return result;
-  } catch { return []; }
-}
 
 const SPELLCASTING_LABEL: Record<string, string> = {
   full: 'Full caster',
@@ -47,9 +25,7 @@ const SPELLCASTING_LABEL: Record<string, string> = {
 export function StepClass({ data, patch }: StepClassProps) {
   const { edition } = useSettingsStore();
   const [subclasses, setSubclasses] = useState<RefId[]>([]);
-  const selectedKey = data.classRef
-    ? `${data.classRef.name}|${data.classRef.source}`
-    : null;
+  const selectedName = data.classRef?.name ?? null;
 
   // Any class whose subclass level is already reached at the chosen creation level must
   // pick it here — Cleric/Sorcerer/Warlock always (level 1), and everyone else when the
@@ -59,11 +35,12 @@ export function StepClass({ data, patch }: StepClassProps) {
 
   useEffect(() => {
     if (!needsSubclassNow || !data.classRef) { setSubclasses([]); return; }
-    fetchSubclasses(data.classRef.name, edition).then(setSubclasses);
+    fetchSubclassOptions(data.classRef.name, data.classRef.source, edition).then(setSubclasses);
   }, [needsSubclassNow, data.classRef?.name, edition]);
 
   const chooseClass = (cls: { name: string; source: string }) => {
-    patch({ classRef: { name: cls.name, source: cls.source }, subclassRef: null });
+    // 2024 characters reference the XPHB reprint so features/equipment resolve to the 2024 rules.
+    patch({ classRef: { name: cls.name, source: classSourceFor(cls.name, edition) }, subclassRef: null, featureChoices: {} });
   };
 
   return (
@@ -75,7 +52,7 @@ export function StepClass({ data, patch }: StepClassProps) {
       <div className="divide-y divide-[var(--color-border)]">
         {CLASSES.map(cls => {
           const key = `${cls.name}|${cls.source}`;
-          const selected = selectedKey === key;
+          const selected = selectedName === cls.name;
           return (
             <div key={key}>
               <button
@@ -94,7 +71,7 @@ export function StepClass({ data, patch }: StepClassProps) {
                     d{cls.hitDie} · {SPELLCASTING_LABEL[cls.spellcasting]}
                   </p>
                 </div>
-                <span className="text-xs text-[var(--color-faint)] ml-2 shrink-0">{cls.source}</span>
+                <span className="text-xs text-[var(--color-faint)] ml-2 shrink-0">{classSourceFor(cls.name, edition)}</span>
               </button>
 
               {/* Level + subclass controls render directly under the selected class */}
@@ -150,6 +127,9 @@ export function StepClass({ data, patch }: StepClassProps) {
                       )}
                     </div>
                   )}
+
+                  {/* "Choose one" class features reached by this level (2024 Divine Order, Primal Order, …) */}
+                  <FeatureChoicesPicker data={data} patch={patch} />
                 </div>
               )}
             </div>
