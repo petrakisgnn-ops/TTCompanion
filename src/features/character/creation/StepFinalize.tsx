@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { abilityMod } from '../../../domain/rules';
 import { getClassData, type AbilityKey } from '../../../domain/rules/classData';
 import { resolveFinalScores } from './CharacterWizard';
-import { maxHp } from '../../../domain/rules/spellSlots';
+import { HitPointsPicker } from './HitPointsPicker';
 import { parseCharacteristicTables, type CharacteristicTables } from '../../../domain/rules/characteristics';
 import { rollDice } from '../../../domain/rules/dice';
 import type { Entry } from '../../../domain/reference/types';
@@ -61,8 +61,6 @@ export function StepFinalize({ data, patch }: StepFinalizeProps) {
   // Real final scores: base + racial/background bonus + earned ASI/feat boosts (capped at 20).
   const finalScores = resolveFinalScores(data);
   const finalScoreFor = (key: AbilityKey): number => finalScores[key];
-  const conMod = abilityMod(finalScores.con);
-  const hp = cls ? maxHp(cls.hitDie, data.level, conMod) : null;
 
   const [tables, setTables] = useState<CharacteristicTables>(EMPTY_TABLES);
 
@@ -170,6 +168,9 @@ export function StepFinalize({ data, patch }: StepFinalizeProps) {
         </div>
       </div>
 
+      {/* Max HP — average, rolled, or entered by hand */}
+      <HitPointsPicker data={data} patch={patch} />
+
       {/* Summary */}
       <div className="bg-[var(--color-card)] rounded-xl p-4 space-y-3">
         <h3 className="text-sm font-semibold text-[var(--color-muted)] uppercase tracking-wide">Summary</h3>
@@ -194,12 +195,6 @@ export function StepFinalize({ data, patch }: StepFinalizeProps) {
             <div className="flex justify-between">
               <span className="text-[var(--color-muted)]">Alignment</span>
               <span>{ALIGNMENT_LABELS[data.alignment]}</span>
-            </div>
-          )}
-          {hp !== null && (
-            <div className="flex justify-between">
-              <span className="text-[var(--color-muted)]">Hit Points</span>
-              <span>{hp}</span>
             </div>
           )}
           {cls && (

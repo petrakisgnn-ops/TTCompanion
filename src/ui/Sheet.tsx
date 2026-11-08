@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 interface SheetProps {
   icon: string;
@@ -8,9 +9,12 @@ interface SheetProps {
   maxHeight?: string;
 }
 
-/** Shared bottom-sheet chrome (backdrop + slide-up panel + header) used across DM mode. */
+/**
+ * Shared bottom-sheet chrome (backdrop + slide-up panel + header). Rendered into <body> via a
+ * portal so `position: fixed` isn't trapped by a transformed ancestor (e.g. a draggable widget).
+ */
 export function Sheet({ icon, title, onClose, children, maxHeight = '85vh' }: SheetProps) {
-  return (
+  return createPortal(
     <>
       <div
         style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 30 }}
@@ -49,6 +53,7 @@ export function Sheet({ icon, title, onClose, children, maxHeight = '85vh' }: Sh
           {children}
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   );
 }

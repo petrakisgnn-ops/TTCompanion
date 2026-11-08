@@ -1,4 +1,5 @@
 import type { Character } from '../character/types';
+import { effectiveMaxHp } from '../rules/hitPoints';
 import { classSummary } from '../character/format';
 import { abilityMod, characterAc, passiveScore, proficiencyBonus, totalLevel } from '../rules';
 import type { LobbyPlayer } from '../session/types';
@@ -37,7 +38,7 @@ export function pcToCombatant(character: Character, meta: PcCombatMeta | undefin
     name: character.name,
     subtitle: `${character.race.name} · ${classSummary(character.classes)}`,
     ac: characterAc(character),
-    hp: { current: character.hp.current, max: character.hp.max },
+    hp: { current: character.hp.current, max: effectiveMaxHp(character.hp) },
     passivePerception: passiveScore(wisMod, pb, proficient, character.proficiencies.expertise?.includes('Perception') ?? false),
     conditions: character.conditions ?? [],
     initiative: meta?.initiative ?? null,

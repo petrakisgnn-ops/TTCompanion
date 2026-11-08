@@ -1,4 +1,5 @@
 ﻿import { useState } from 'react';
+import { effectiveMaxHp } from '../../../domain/rules/hitPoints';
 import { useCharacterStore } from '../../../stores/characterStore';
 import type { Character } from '../../../domain/character/types';
 import { getClassData } from '../../../domain/rules/classData';
@@ -24,7 +25,7 @@ export function ShortRestPanel({ character, onDone }: ShortRestPanelProps) {
   }));
 
   const conMod = abilityMod(character.abilityScores.con);
-  const atMax = character.hp.current >= character.hp.max;
+  const atMax = character.hp.current >= effectiveMaxHp(character.hp);
 
   const roll = (die: number) => {
     const rolled = Math.floor(Math.random() * die) + 1;

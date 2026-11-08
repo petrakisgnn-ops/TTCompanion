@@ -82,7 +82,8 @@ export interface Character {
   personality: Personality;
   appearance: Appearance;
   abilityScores: AbilityScores;
-  hp: { max: number; current: number; temp: number };
+  /** `max` is the permanent maximum; `maxModifier` a temporary change on top (Aid, curses) — see rules/hitPoints. */
+  hp: { max: number; current: number; temp: number; maxModifier?: number; maxModifierNote?: string };
   hitDiceSpent: number;
   deathSaves: { successes: number; failures: number };
   concentration: RefId | null;

@@ -5,13 +5,16 @@ import type { Character } from '../../domain/character/types';
 import { abilityMod, totalLevel } from '../../domain/rules';
 import { classSummary } from '../../domain/character/format';
 import { useCharacterAc } from './useCharacterAc';
+import { MaxHpSheet } from './MaxHpSheet';
+import { effectiveMaxHp } from '../../domain/rules/hitPoints';
 
 function classLabel(c: Character): string {
   return classSummary(c.classes);
 }
 
 function hpPct(c: Character): number {
-  return c.hp.max === 0 ? 0 : Math.round((c.hp.current / c.hp.max) * 100);
+  const max = effectiveMaxHp(c.hp);
+  return max === 0 ? 0 : Math.min(100, Math.round((c.hp.current / max) * 100));
 }
 
 function hpColor(pct: number): string {
@@ -28,6 +31,8 @@ interface CharacterCardProps {
 
 function CharacterCard({ character: c, onOpen, onDelete }: CharacterCardProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editHp, setEditHp] = useState(false);
+  const maxModifier = c.hp.maxModifier ?? 0;
   const pct = hpPct(c);
   const conMod = abilityMod(c.abilityScores.con);
   // Armor class: resolved worn armor + shield, else override, else unarmored (incl. Barb/Monk).
@@ -60,13 +65,29 @@ function CharacterCard({ character: c, onOpen, onDelete }: CharacterCardProps) {
             </p>
           </div>
 
-          {/* HP */}
-          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          {/* HP — tap to edit max HP (Aid, curses, corrections) without opening the sheet */}
+          <button
+            onClick={e => { e.stopPropagation(); setEditHp(true); }}
+            aria-label={`Edit ${c.name}'s max HP`}
+            style={{ textAlign: 'right', flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: '4px 0 4px 8px', minHeight: 44 }}
+          >
             <span style={{ fontFamily: "'Spline Sans Mono', monospace", fontSize: 20, fontWeight: 700, color: hpColor(pct) }}>{c.hp.current}</span>
-            <span style={{ fontSize: 13, color: 'var(--color-faint)' }}>/{c.hp.max}</span>
-            <p style={{ fontSize: 10, color: 'var(--color-faint)', marginTop: 1 }}>HP</p>
-          </div>
+            <span style={{ fontSize: 13, color: maxModifier > 0 ? '#5ec27a' : maxModifier < 0 ? '#e0556b' : 'var(--color-faint)' }}>/{effectiveMaxHp(c.hp)}</span>
+            <p style={{ fontSize: 10, color: 'var(--color-faint)', marginTop: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2 }}>
+              HP <span className="msym" style={{ fontSize: 12 }}>edit</span>
+            </p>
+          </button>
         </div>
+
+        {/* Temporary max-HP change and its source (Aid, a curse, …) */}
+        {maxModifier !== 0 && (
+          <p style={{ marginTop: 8, fontSize: 11.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span style={{ fontWeight: 700, color: maxModifier > 0 ? '#5ec27a' : '#e0556b' }}>
+              {maxModifier > 0 ? `+${maxModifier}` : maxModifier} max HP
+            </span>
+            {c.hp.maxModifierNote && <span style={{ color: 'var(--color-faint)' }}> · {c.hp.maxModifierNote}</span>}
+          </p>
+        )}
 
         {/* HP bar */}
         <div style={{ marginTop: 12, height: 4, background: 'var(--color-border)', borderRadius: 3, overflow: 'hidden' }}>
@@ -90,6 +111,8 @@ function CharacterCard({ character: c, onOpen, onDelete }: CharacterCardProps) {
           ))}
         </div>
       </div>
+
+      {editHp && <MaxHpSheet character={c} onClose={() => setEditHp(false)} />}
 
       {/* Delete row */}
       <div

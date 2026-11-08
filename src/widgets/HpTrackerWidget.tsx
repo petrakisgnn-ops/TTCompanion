@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useCharacterStore } from '../stores/characterStore';
 import { ShortRestPanel } from '../features/character/sheet/ShortRestPanel';
+import { MaxHpSheet } from '../features/character/MaxHpSheet';
+import { effectiveMaxHp } from '../domain/rules/hitPoints';
 import { totalLevel } from '../domain/rules';
 import { registerWidget } from './registry';
 import type { WidgetProps } from './registry';
@@ -11,7 +13,10 @@ function HpTrackerWidget({ character }: WidgetProps) {
   const [mode, setMode] = useState<'heal' | 'damage'>('damage');
   const [showShortRest, setShowShortRest] = useState(false);
 
-  const { current, max, temp } = character.hp;
+  const { current, temp } = character.hp;
+  const max = effectiveMaxHp(character.hp);
+  const maxModifier = character.hp.maxModifier ?? 0;
+  const [editMax, setEditMax] = useState(false);
   const level = totalLevel(character.classes);
   const hitDiceAvailable = level - (character.hitDiceSpent ?? 0);
   const pct = max > 0 ? Math.max(0, Math.min(100, (current / max) * 100)) : 0;
@@ -29,7 +34,13 @@ function HpTrackerWidget({ character }: WidgetProps) {
       <div className="flex items-end justify-between">
         <div>
           <span className="text-3xl font-bold">{current}</span>
-          <span className="text-[var(--color-text-3)]">/{max}</span>
+          <button
+            onClick={() => setEditMax(true)}
+            className="underline decoration-dotted underline-offset-4 decoration-[var(--color-faint)]"
+            aria-label="Edit max HP"
+          >
+            <span className={maxModifier > 0 ? 'text-emerald-400' : maxModifier < 0 ? 'text-red-400' : 'text-[var(--color-text-3)]'}>/{max}</span>
+          </button>
           {temp > 0 && <span className="ml-1.5 text-sky-400 text-sm">+{temp}t</span>}
         </div>
         <div className="text-right">
@@ -37,6 +48,15 @@ function HpTrackerWidget({ character }: WidgetProps) {
           <span className="text-xs text-[var(--color-faint)]">{hitDiceAvailable}/{level} HD</span>
         </div>
       </div>
+
+{maxModifier !== 0 && (
+        <p className="text-xs truncate">
+          <span className={maxModifier > 0 ? 'text-emerald-400' : 'text-red-400'}>
+            {maxModifier > 0 ? `+${maxModifier}` : maxModifier} max
+          </span>
+          {character.hp.maxModifierNote && <span className="text-[var(--color-faint)]"> · {character.hp.maxModifierNote}</span>}
+        </p>
+      )}
 
       <div className="h-1.5 bg-[var(--color-raised)] rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
@@ -91,6 +111,8 @@ function HpTrackerWidget({ character }: WidgetProps) {
           Go
         </button>
       </div>
+
+      {editMax && <MaxHpSheet character={character} onClose={() => setEditMax(false)} />}
 
       {/* Rest buttons / Short rest panel */}
       {showShortRest ? (

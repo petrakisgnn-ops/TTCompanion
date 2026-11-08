@@ -8,6 +8,7 @@ import { totalLevel } from '../domain/rules';
 import type { FeatProfSelection } from '../domain/rules/featRewards';
 import { featureChoiceTotals, reconcileGrantedProficiencies } from '../domain/rules/featureChoices';
 import { getClassData } from '../domain/rules/classData';
+import { effectiveMaxHp, withBaseMax, withMaxModifier, withMaxModifierNote } from '../domain/rules/hitPoints';
 import { upgradeReprintedSubclasses } from '../features/character/grantSourcesCache';
 import { CUSTOM_ITEM_SOURCE, customItemRef, type CustomItem } from '../domain/character/customItems';
 
@@ -26,6 +27,12 @@ interface CharacterStore {
 
   updateHp: (id: string, delta: number) => Promise<void>;
   setTempHp: (id: string, temp: number) => Promise<void>;
+  /** Temporary max-HP change (Aid +5, a curse −10, …); 0 clears it. */
+  setMaxHpModifier: (id: string, modifier: number, note?: string) => Promise<void>;
+  /** Note on where the temporary max-HP change comes from (blank removes it). */
+  setMaxHpNote: (id: string, note: string) => Promise<void>;
+  /** Correct the permanent max HP. */
+  setBaseMaxHp: (id: string, max: number) => Promise<void>;
   spendResource: (id: string, resourceId: string) => Promise<void>;
   restoreResource: (id: string, resourceId: string) => Promise<void>;
   shortRest: (id: string) => Promise<void>;
@@ -128,12 +135,21 @@ export const useCharacterStore = create<CharacterStore>()((set, get) => ({
       ...c,
       hp: {
         ...c.hp,
-        current: Math.max(0, Math.min(c.hp.max + c.hp.temp, c.hp.current + delta)),
+        current: Math.max(0, Math.min(effectiveMaxHp(c.hp) + c.hp.temp, c.hp.current + delta)),
       },
     })),
 
   setTempHp: (id, temp) =>
     get().mutate(id, c => ({ ...c, hp: { ...c.hp, temp: Math.max(0, temp) } })),
+
+  setMaxHpModifier: (id, modifier, note) =>
+    get().mutate(id, c => ({ ...c, hp: withMaxModifier(c.hp, modifier, note) })),
+
+  setMaxHpNote: (id, note) =>
+    get().mutate(id, c => ({ ...c, hp: withMaxModifierNote(c.hp, note) })),
+
+  setBaseMaxHp: (id, max) =>
+    get().mutate(id, c => ({ ...c, hp: withBaseMax(c.hp, max) })),
 
   spendResource: (id, resourceId) =>
     get().mutate(id, c => ({
@@ -166,7 +182,7 @@ export const useCharacterStore = create<CharacterStore>()((set, get) => ({
       const recover = Math.max(1, Math.floor(totalLvl / 2));
       return {
         ...c,
-        hp: { ...c.hp, current: c.hp.max, temp: 0 },
+        hp: { ...c.hp, current: effectiveMaxHp(c.hp), temp: 0 },
         hitDiceSpent: Math.max(0, (c.hitDiceSpent ?? 0) - recover),
         deathSaves: { successes: 0, failures: 0 },
         concentration: null,
@@ -325,7 +341,7 @@ export const useCharacterStore = create<CharacterStore>()((set, get) => ({
     get().mutate(id, c => ({
       ...c,
       hitDiceSpent: (c.hitDiceSpent ?? 0) + 1,
-      hp: { ...c.hp, current: Math.min(c.hp.max, c.hp.current + hpGained) },
+      hp: { ...c.hp, current: Math.min(effectiveMaxHp(c.hp), c.hp.current + hpGained) },
     })),
 
   rollDeathSave: (id, success) =>

@@ -2,7 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import type { AbilityScores, Character, Currency, InventoryItem, KnownSpellRef } from '../../../domain/character/types';
 import type { RefId } from '../../../domain/reference/types';
-import { maxHp } from '../../../domain/rules/spellSlots';
+import { startingHp, type StartingHpMethod } from '../../../domain/rules/startingHp';
 import { recomputeAllResources } from '../../../domain/rules/resources';
 import { hpBonusPerLevel } from '../../../domain/rules/hpBonus';
 import { abilityMod } from '../../../domain/rules';
@@ -97,6 +97,8 @@ export interface WizardData {
   optionalFeatures: RefId[];
   /** Picks for "choose one" class features (Divine Order, Primal Order, …) — see FeatureChoicesPicker. */
   featureChoices: Record<string, string[]>;
+  /** How max HP is set for levels after 1st — average, rolled, or typed in. See StepFinalize. */
+  hpMethod: StartingHpMethod;
   /** Weapons chosen for 2024 Weapon Mastery — see WeaponMasteryPicker. */
   masteredWeapons: RefId[];
   /** Spells learned (known casters + Wizard spellbook + cantrips) — see StepSpells. */
@@ -147,7 +149,7 @@ export function resolveFinalScores(data: WizardData): AbilityScores {
  * options). Resolve backgroundRef -> background.feats -> matching feats.json entries
  * so the feat (and whatever it grants) ends up on the new character.
  */
-async function resolveBackgroundFeats(backgroundRef: RefId): Promise<RefId[]> {
+export async function resolveBackgroundFeats(backgroundRef: RefId): Promise<RefId[]> {
   try {
     const [bgRes, featRes] = await Promise.all([
       fetch(`${import.meta.env.BASE_URL}data/backgrounds.json`),
@@ -243,6 +245,7 @@ export function CharacterWizard() {
     asiChoices: [],
     optionalFeatures: [],
     featureChoices: {},
+    hpMethod: { kind: 'average' },
     masteredWeapons: [],
     knownSpells: [],
     preparedSpells: [],
@@ -362,15 +365,14 @@ export function CharacterWizard() {
     const cls = getClassData(classRef.name);
     const conMod = abilityMod(finalScores.con);
     // Hill Dwarf / Draconic Bloodline / Tough grant HP max per level (see hpBonusPerLevel).
-    const hpBonus = hpBonusPerLevel({
+    const bonusPerLevel = hpBonusPerLevel({
       race: raceRef, subrace: subraceRef,
       feats: grantedFeats,
       classes: [{ classRef, level, subclass: finalSubclass }],
-    } as Character) * level;
-    const hp = cls
-      ? { max: maxHp(cls.hitDie, level, conMod) + hpBonus, current: 0, temp: 0 }
-      : { max: 10 + hpBonus, current: 0, temp: 0 };
-    hp.current = hp.max;
+    } as Character);
+    // Average / rolled / manual — see StepFinalize and startingHp.
+    const maxHpValue = startingHp({ hitDie: cls?.hitDie ?? 8, level, conMod, bonusPerLevel }, data.hpMethod);
+    const hp = { max: maxHpValue, current: maxHpValue, temp: 0 };
 
     // Same resource derivation the sheet uses from here on (slots incl. subclass
     // casters like Eldritch Knight, class pools like Rage/Ki) — one code path.

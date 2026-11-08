@@ -3,6 +3,8 @@ import { useCharacterStore } from '../../../stores/characterStore';
 import type { Character } from '../../../domain/character/types';
 import { totalLevel } from '../../../domain/rules';
 import { ShortRestPanel } from './ShortRestPanel';
+import { MaxHpSheet } from '../MaxHpSheet';
+import { effectiveMaxHp } from '../../../domain/rules/hitPoints';
 
 function DeathSaves({ character }: { character: Character }) {
   const { rollDeathSave, resetDeathSaves } = useCharacterStore();
@@ -70,7 +72,10 @@ export function HpTracker({ character }: HpTrackerProps) {
   const [showShortRest, setShowShortRest] = useState(false);
 
   const id = character.id;
-  const { current, max, temp } = character.hp;
+  const { current, temp } = character.hp;
+  const max = effectiveMaxHp(character.hp);
+  const maxModifier = character.hp.maxModifier ?? 0;
+  const [editMax, setEditMax] = useState(false);
   const level = totalLevel(character.classes);
   const hitDiceAvailable = level - (character.hitDiceSpent ?? 0);
 
@@ -89,7 +94,13 @@ export function HpTracker({ character }: HpTrackerProps) {
       <div className="flex items-end justify-between">
         <div>
           <span className="text-4xl font-bold">{current}</span>
-          <span className="text-[var(--color-muted)] text-lg">/{max}</span>
+          <button
+            onClick={() => setEditMax(true)}
+            className="text-lg underline decoration-dotted underline-offset-4 decoration-[var(--color-faint)] hover:text-[var(--color-text)]"
+            aria-label="Edit max HP"
+          >
+            <span className={maxModifier > 0 ? 'text-emerald-400' : maxModifier < 0 ? 'text-red-400' : 'text-[var(--color-muted)]'}>/{max}</span>
+          </button>
           {temp > 0 && (
             <span className="ml-2 text-sky-400 font-semibold text-sm">+{temp} tmp</span>
           )}
@@ -99,6 +110,15 @@ export function HpTracker({ character }: HpTrackerProps) {
           <span className="text-xs text-[var(--color-disabled)]">{hitDiceAvailable}/{level} HD</span>
         </div>
       </div>
+
+{maxModifier !== 0 && (
+        <p className="text-xs -mt-1 truncate">
+          <span className={maxModifier > 0 ? 'text-emerald-400' : 'text-red-400'}>
+            {maxModifier > 0 ? `+${maxModifier}` : maxModifier} max
+          </span>
+          {character.hp.maxModifierNote && <span className="text-[var(--color-faint)]"> · {character.hp.maxModifierNote}</span>}
+        </p>
+      )}
 
       {/* HP bar */}
       <div className="h-2 bg-[var(--color-raised)] rounded-full overflow-hidden">
@@ -154,6 +174,8 @@ export function HpTracker({ character }: HpTrackerProps) {
           );
         })}
       </div>
+
+      {editMax && <MaxHpSheet character={character} onClose={() => setEditMax(false)} />}
 
       {/* Death saves — shown when at 0 HP */}
       {current === 0 && <DeathSaves character={character} />}
